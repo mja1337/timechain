@@ -1,0 +1,11 @@
+# Written by scripts/mutate-engine.mjs when a sweep is run in the repo root.
+# A sweep's output is a working note, not a record: it is only true for the commit
+# it ran against.
+mutation-survivors.json
+
+# Local editor and preview configuration, not part of the game.
+.claude/
+
+# Finder metadata. Written into any directory the user opens, at any depth, and
+# recreated the moment it is removed - so it is ignored rather than deleted.
+.DS_Store

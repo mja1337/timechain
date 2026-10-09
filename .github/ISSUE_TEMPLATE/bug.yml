@@ -1,0 +1,43 @@
+name: Report a bug
+description: Something broke, looked wrong or did not make sense.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. Issues here are public, so please do not paste anything private. The game stores nothing about you, and a save file is not needed unless asked for.
+  - type: input
+    id: version
+    attributes:
+      label: Game version
+      description: Filled in for you when you come from the footer link.
+    validations:
+      required: true
+  - type: input
+    id: ingame_date
+    attributes:
+      label: In-game date
+      description: Also filled in for you. Roughly when in the run it happened.
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can it be made to happen again?
+      description: The last few things you did before it went wrong.
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: "e.g. iPhone, Safari or Windows laptop, Chrome"
+  - type: textarea
+    id: debug
+    attributes:
+      label: Debug info
+      description: Press "Copy debug info" in the footer (or on the recovery page) and paste it here. It holds the version, date, browser and any error, and none of your save.
+      render: text

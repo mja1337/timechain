@@ -1,0 +1,50 @@
+name: Suggest something
+description: An idea, a confusing moment, or how your first run felt.
+title: "[idea] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. Issues here are public, so please do not paste anything private. Every question below is optional: answer what you can.
+  - type: input
+    id: version
+    attributes:
+      label: Game version
+      description: Filled in for you when you come from the footer link.
+  - type: input
+    id: ingame_date
+    attributes:
+      label: In-game date
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you change or add, and why?
+  - type: dropdown
+    id: progress
+    attributes:
+      label: How far did you get?
+      options:
+        - I did not get past the introduction
+        - I finished the wallet ceremony
+        - I finished the tour
+        - I paid my first bill
+        - I played for a while
+  - type: dropdown
+    id: tour
+    attributes:
+      label: Did the tour make sense?
+      options:
+        - I skipped it
+        - Yes
+        - Partly
+        - No
+  - type: textarea
+    id: confused
+    attributes:
+      label: What confused you, or where did you get stuck?
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: "e.g. iPhone, Safari or Windows laptop, Chrome"
