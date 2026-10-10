@@ -20,6 +20,6 @@ for(const event of events){
 reactions.genesis[0]='<script>unexpected()</script>';
 assert(!context.eventReactionsHtml({id:'genesis'}).includes('<script>'),'Dialogue must be escaped');
 assert.equal(context.eventReactionsHtml({id:'missing'}),'');
-const render=fs.readFileSync(new URL('../src/ui/render.js',import.meta.url),'utf8')+fs.readFileSync(new URL('../src/ui/event-modals.js',import.meta.url),'utf8');
+const render=fs.readFileSync(new URL('../src/ui/render.js',import.meta.url),'utf8')+fs.readFileSync(new URL('../src/ui/event-modals.js',import.meta.url),'utf8')+fs.readFileSync(new URL('../src/ui/story.js',import.meta.url),'utf8');
 assert(render.includes('eventReactionsHtml(feature,true)')&&render.includes('eventReactionsHtml(e)'),'Both story surfaces need the dialogue');
 console.log(`Event reactions passed: ${events.length} chapters, three accessible icon controls, unique practical situations, separate sidebar/modal IDs and escaped text.`);
