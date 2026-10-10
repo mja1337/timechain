@@ -706,3 +706,9 @@ a.coin{text-decoration:none;cursor:pointer;transition:border-color .12s,backgrou
 .chart-xaxis span.now{color:var(--orange2)}
 .chart-xaxis span.start{transform:none}.chart-xaxis span.end{transform:translateX(-100%)}
 @media(max-width:480px){.chart-frame{--chart-gutter:46px}.chart-yaxis span.minor{display:none}.chart-yaxis span{right:6px}}
+/* The era label shares the desktop topbar with cash, the clock, XP and the speeds. It takes whatever width is left,
+   on one line: the full name when it fits, a short one when it does not, and an ellipsis as a last resort. */
+@media(min-width:801px){.topbar{gap:12px}.era-chip{flex:1 1 0;min-width:0;padding-left:14px;container-type:inline-size}.era-chip strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+.era-chip strong>span{display:inline;margin:0;color:inherit;font:inherit;text-transform:none;letter-spacing:normal}
+.era-chip .era-short{display:none}
+@container (max-width:250px){.era-chip .era-full{display:none}.era-chip .era-short{display:inline}.era-chip strong{font-size:11px}}
