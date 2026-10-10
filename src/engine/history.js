@@ -86,26 +86,71 @@ function cycleShapeAt(phase){
   const a=HALVING_CYCLE_SHAPE[i%n],b=HALVING_CYCLE_SHAPE[(i+1)%n];
   return a+(b-a)*f;
 }
-/* Deterministic by construction: a pure function of the date, never of state.rng, so a
-   repeated render or a reloaded save always produces the same projection. */
+/* Deterministic by construction: a pure function of the date and campaign seed, never of
+   state.rng, so a repeated render or a reloaded save always produces the same projection. */
 function futureWobble(t,years,seed){
+  const scale=Number.isFinite(Number(arguments[3]))?Number(arguments[3]):1;
   const monthly=VOL_ANNUAL_0*Math.exp(-years*Math.LN2/VOL_HALFLIFE)+VOL_ANNUAL_INF*(1-Math.exp(-years*Math.LN2/VOL_HALFLIFE));
-  const sd=monthly/Math.sqrt(12),index=Math.floor((t-END)/(DAY*30));
+  const sd=monthly/Math.sqrt(12)*scale,index=Math.floor((t-END)/(DAY*30));
   const draw=(hashFrac(index*seed)+hashFrac(index*seed*1.7+11)+hashFrac(index*seed*2.9+23)-1.5)/1.5;
   return Math.exp(draw*sd*Math.sqrt(3));
 }
+const VOLATILITY_MIN=0,VOLATILITY_MAX=100,VOLATILITY_DEFAULT=50;
+const VOLATILITY_SCENARIOS=[
+  {id:"war",title:"War breaks out",summary:"A regional war disrupts trade, power and risk appetite.",priceShock:-.25,hashShock:-.15,duration:180,recovery:900},
+  {id:"aliens",title:"Aliens arrive",summary:"An unexpected alien encounter scrambles markets and infrastructure.",priceShock:-.5,hashShock:-.3,duration:120,recovery:720},
+  {id:"alien-war",title:"Alien war",summary:"A fictional alien conflict triggers a severe economic meltdown.",priceShock:-.9,hashShock:-.65,duration:360,recovery:1800}
+];
+function volatilityEnabled(){return typeof state!=="undefined"&&!!state.volatilityMode}
+function volatilityProjectionEnabled(){return volatilityEnabled()&&!!state.sandbox}
+function volatilityLevel(){
+  if(typeof state==="undefined")return VOLATILITY_DEFAULT;
+  const n=Number(state.volatilityLevel);
+  return Math.max(VOLATILITY_MIN,Math.min(VOLATILITY_MAX,Number.isFinite(n)?n:VOLATILITY_DEFAULT));
+}
+function volatilityIntensity(){return .25+volatilityLevel()/50*.75}
+function volatilityProfile(){
+  if(!volatilityProjectionEnabled())return{enabled:false,scale:1,intensity:0};
+  return{enabled:true,scale:.35+volatilityLevel()/50*.65,intensity:volatilityIntensity()};
+}
+function volatilitySeed(){return typeof state!=="undefined"&&Number.isFinite(Number(state.seed))?Number(state.seed):0}
+function volatilityEventSchedule(seed=volatilitySeed()){
+  const year=DAY*365.25;
+  return VOLATILITY_SCENARIOS.map((scenario,index)=>{
+    const jitter=(hashFrac(seed*.071+index*19.31)-.5)*year*1.4;
+    return{...scenario,start:Math.round(END+year*(2.5+index*4)+jitter)};
+  });
+}
+function volatilityEventFactor(t,kind){
+  const profile=volatilityProfile();if(!profile.enabled||t<=END)return 1;
+  return volatilityEventSchedule().reduce((factor,event)=>{
+    const age=(t-event.start)/DAY;if(age<0||age>event.duration+event.recovery)return factor;
+    const shock=kind==="hash"?event.hashShock:event.priceShock;
+    const target=Math.max(.05,1+shock*profile.intensity);
+    const progress=age<=event.duration?0:(age-event.duration)/event.recovery;
+    const current=progress?Math.exp(Math.log(target)*(1-Math.min(1,progress))):target;
+    return factor*current;
+  },1);
+}
+function futureVolatilityNoise(t,kind,profile){
+  if(!profile.enabled)return 1;
+  const index=Math.floor((t-END)/(DAY*30)),salt=kind==="hash"?7.7:3.3,seed=volatilitySeed();
+  const draw=(hashFrac(index*.91+seed*.001+salt)+hashFrac(index*1.73+seed*.002+salt*3)-1)/1;
+  const monthlySd=(.025+.075*profile.intensity)*Math.exp(-Math.max(0,(t-END)/(DAY*365.25))*Math.LN2/30);
+  return Math.exp(draw*monthlySd);
+}
 function futurePriceAt(t){
-  const years=futureYears(t),v0=interp(PRICE,END),trend=decayedTrend(v0,PRICE_G0,PRICE_GINF,PRICE_HALFLIFE,years);
-  const amplitude=CYCLE_AMP0*Math.exp(-years*Math.LN2/CYCLE_HALFLIFE);
+  const profile=volatilityProfile(),years=futureYears(t),v0=interp(PRICE,END),trend=decayedTrend(v0,PRICE_G0,PRICE_GINF,PRICE_HALFLIFE,years);
+  const amplitude=CYCLE_AMP0*Math.exp(-years*Math.LN2/CYCLE_HALFLIFE)*profile.scale;
   const cycle=Math.exp(cycleShapeAt(halvingPhase(t))*amplitude);
-  return Math.max(v0*.05,trend*cycle*futureWobble(t,years,2.7));
+  return Math.max(v0*.01,trend*cycle*futureWobble(t,years,2.7,profile.scale)*futureVolatilityNoise(t,"price",profile)*volatilityEventFactor(t,"price"));
 }
 function futureHashAt(t){
-  const years=futureYears(t),v0=interp(HASH,END),trend=decayedTrend(v0,HASH_G0,HASH_GINF,HASH_HALFLIFE,years);
+  const profile=volatilityProfile(),years=futureYears(t),v0=interp(HASH,END),trend=decayedTrend(v0,HASH_G0,HASH_GINF,HASH_HALFLIFE,years);
   const heat=Math.min(1,Math.max(0,(instRate(PRICE_G0,PRICE_GINF,PRICE_HALFLIFE,years)-PRICE_GINF)/(PRICE_G0-PRICE_GINF))),coupling=1+.12*heat;
-  const lag=.14,amplitude=CYCLE_AMP0*Math.exp(-years*Math.LN2/CYCLE_HALFLIFE)*.35;
+  const lag=.14,amplitude=CYCLE_AMP0*Math.exp(-years*Math.LN2/CYCLE_HALFLIFE)*.35*profile.scale;
   const cycle=Math.exp(cycleShapeAt(halvingPhase(t)-lag)*amplitude);
-  return Math.max(v0*.1,trend*coupling*cycle*futureWobble(t,years,4.1)**.4);
+  return Math.max(v0*.02,trend*coupling*cycle*futureWobble(t,years,4.1,profile.scale)**.4*futureVolatilityNoise(t,"hash",profile)*volatilityEventFactor(t,"hash"));
 }
 function futureFeeAt(t){const years=futureYears(t),v0=Math.max(.01,interp(FEES,END,false));return decayedTrend(v0,.05,.005,10,years)}
 function futureTxAt(t){const years=futureYears(t),v0=interp(TX,END);return decayedTrend(v0,.03,.005,10,years)}

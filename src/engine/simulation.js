@@ -19,8 +19,8 @@ const initialState=()=>{const seed=Math.floor(Math.random()*4294967296);return{
   pendingSettlement:null,endReason:null,arrearsDue:0,gridCutAnnounced:false,marketPressure:{usd:0,at:0},
   operator:{eras:{},periodMined:0,periodUptime:0,periodDays:0,lastRevenueUsd:0,totalMonths:0,solventMonths:0,profitableMonths:0,competitiveMonths:0,bridgeLoans:0,restructures:0},
   xp:{total:0,level:1,peakLevel:1,bestDifficulty:0,shares:0,sources:{shares:0,record:0,deploy:0,repair:0,spend:0}},
-  knowledge:0,nextKnowledge:5,learning:null,completedLearning:[],custody:{devices:[],keys:[],policy:"single",assigned:[],configBackedUp:false,orders:[],parts:{},builds:[],exposure:[],seq:0,lastScare:0},maintenance:{condition:{},faults:{},faultsByPart:{},selfRepairs:{},dryFit:{},parts:0,inventory:{fan:0,hashboard:0,powerPcb:0,coolantPump:0,coolingManifold:0,laptopfan:0,asicfan:0,hashboardearly:0,hashboardmodern:0},inventoryMigrated:true,orders:[],serviceJobs:[]},procurementOrders:[],inactiveHardware:{},commissioningJobs:[],retirementJobs:[],decommissionedHardware:{},relocationJob:null,facilityUpgradeJob:null,ops:{firmwarePatchedUntil:0,hijackUntil:0,outageUntil:0,powerOutageUntil:0,venueFreezes:{},riskMonth:""},strategy:{mstr:0,strk:0,strf:0,strd:0,strc:0,yieldEarned:0},sandbox:false,contract:"standard",staff:[],projectLoan:0,insured:false,milestones:[],milestoneLog:[],walletSetup:{done:false,step:0,rolls:[],keyHex:""},immersion:{},mineSection:"floor",priceChartRange:"all",secondary:{stock:{},month:""},stagedCondition:{},planning:{month:""},guidance:{dismissed:[]},walletSoftware:0,donations:[],
-  blocks:0,mined:0,nodeDays:0,uptimeDays:0,powerSpent:0,nextMilestone:1000,
+  knowledge:0,nextKnowledge:5,learning:null,completedLearning:[],custody:{devices:[],keys:[],policy:"single",assigned:[],configBackedUp:false,orders:[],parts:{},builds:[],exposure:[],seq:0,lastScare:0},maintenance:{condition:{},faults:{},faultsByPart:{},selfRepairs:{},dryFit:{},parts:0,inventory:{fan:0,hashboard:0,powerPcb:0,coolantPump:0,coolingManifold:0,laptopfan:0,asicfan:0,hashboardearly:0,hashboardmodern:0},inventoryMigrated:true,orders:[],serviceJobs:[]},procurementOrders:[],inactiveHardware:{},commissioningJobs:[],retirementJobs:[],decommissionedHardware:{},relocationJob:null,facilityUpgradeJob:null,ops:{firmwarePatchedUntil:0,hijackUntil:0,outageUntil:0,powerOutageUntil:0,venueFreezes:{},riskMonth:""},strategy:{mstr:0,strk:0,strf:0,strd:0,strc:0,yieldEarned:0},sandbox:false,volatilityMode:false,volatilityLevel:VOLATILITY_DEFAULT,volatilitySeen:[],contract:"standard",staff:[],projectLoan:0,insured:false,milestones:[],milestoneLog:[],walletSetup:{done:false,step:0,rolls:[],keyHex:""},immersion:{},mineSection:"floor",priceChartRange:"all",secondary:{stock:{},month:""},stagedCondition:{},planning:{month:""},guidance:{dismissed:[]},walletSoftware:0,donations:[],
+  blocks:0,mined:0,nodeDays:0,uptimeDays:0,powerSpent:0,nextMilestone:1000,energy:ENERGY_STATE_DEFAULT(),
   connectivity:"fixed",history:[],activity:[],activitySeq:0,log:[{time:START,text:"Client synced to the network tip",amount:"~block "+approxHeight(START)}]
 }};
 let state,loadedHasHardwareAlerts=false,loadedHasHardwareToastSeen=false,activeTab="dashboard",mobileMenuOpen=false,mobileMenuSection="play",activityFilter="all",activityLimit=100,tradePercentages={},hardwarePurchaseChoice={},custodyLesson="malware",selectedVenue="mtgox",introDifficulty="medium",introStartingCash=STARTING_LIQUIDITY_DEFAULT,pendingTransaction=null,toast=null,toastTimer=null,timer=null,faucet=null,faucetTimer=null,mempoolTimer=null,introStep=0;
@@ -134,9 +134,11 @@ normalizeCustodyPlaces(state.custody);
 Object.keys(state.strategy).forEach(k=>{if(!Number.isFinite(Number(state.strategy[k])))state.strategy[k]=0;else state.strategy[k]=Number(state.strategy[k])});
 state.nodeStorage=Math.max(50,Number(state.nodeStorage)||50);state.nodePruned=!!state.nodePruned;state.nodeMode=NODE_MODES.some(x=>x.id===state.nodeMode)?state.nodeMode:(state.nodePruned?"pruned":"archival");state.nodePruned=state.nodeMode==="pruned";
 state.staff=Array.isArray(state.staff)?state.staff:[];state.contract=POWER_CONTRACTS.some(x=>x.id===state.contract)?state.contract:"standard";state.connectivity=CONNECTIVITY_PLANS.some(x=>x.id===state.connectivity)?state.connectivity:"fixed";state.projectLoan=Math.max(0,Number(state.projectLoan)||0);state.milestones=Array.isArray(state.milestones)?state.milestones:[];
+normalizeEnergyState(state);
 state.billLedger=Object.assign({energy:0,rent:0,internet:0,staff:0,insurance:0,nodeNetwork:0,other:0},state.billLedger||{});Object.keys(state.billLedger).forEach(k=>state.billLedger[k]=Math.max(0,Number(state.billLedger[k])||0));const migratedLedgerTotal=Object.values(state.billLedger).reduce((sum,value)=>sum+value,0);if(state.bill>migratedLedgerTotal+1e-8)state.billLedger.other+=state.bill-migratedLedgerTotal;
 state.donations=Array.isArray(state.donations)?state.donations:[];
 state.guidance=Object.assign({dismissed:[]},state.guidance||{});state.guidance.dismissed=Array.isArray(state.guidance.dismissed)?[...new Set(state.guidance.dismissed.map(String))]:[];
+state.volatilityMode=!!state.volatilityMode;state.volatilityLevel=Math.max(VOLATILITY_MIN,Math.min(VOLATILITY_MAX,Number.isFinite(Number(state.volatilityLevel))?Number(state.volatilityLevel):VOLATILITY_DEFAULT));state.volatilitySeen=Array.isArray(state.volatilitySeen)?[...new Set(state.volatilitySeen.map(String))]:[];
 state.skills=Array.isArray(state.skills)?[...new Set(state.skills.filter(id=>SKILLS.some(s=>s.id===id)))]:[];
 state.seen=Array.isArray(state.seen)?state.seen:[];
 state.milestones=Array.isArray(state.milestones)?state.milestones:[];
@@ -233,10 +235,10 @@ function fleet(s=state){
   HARDWARE.forEach(h=>{const n=s.hardware[h.id]||0,reason=hardwareOfflineReason(h,s),rs=hardwareRepairState(h,s),{repairing,paused,active,servicing}=rs;space+=h.space*n;value+=h.cost*n;count+=n;{const immAll=immersionCount(h.id,s);potentialW+=h.w*(n-immAll+immAll*IMMERSION_POWER_GAIN)}if(n&&reason){offline.push({h,n,reason});return}if(repairing)offline.push({h,n:repairing,reason:servicing?"Repair in progress":"Unexpected hardware fault"});if(paused)offline.push({h,n:paused,reason:"Manually powered down"});const effectiveHash=h.hash*hardwareLaunchFactor(h,s.time);activeCount+=active;const imm=immersionActive(h,active,s),air=active-imm;hash+=effectiveHash*(air+imm*immersionHashGain(s));minerW+=h.w*(air+imm*IMMERSION_POWER_GAIN);if(s.skills.includes("asictune")&&(h.era==="ASIC"||h.era==="HYDRO ASIC"))hash+=effectiveHash*active*.05});
   if(s.skills.includes("firmware"))hash*=1.04;if(s.skills.includes("undervolt"))minerW*=.95;
   if(s.overdrive){hash*=1.15;minerW*=1.25}
-  const coolingW=coolingPowerWatts(s,minerW),w=minerW+coolingW;potentialW*=s.skills.includes("undervolt")?.95:1;if(s.overdrive)potentialW*=1.25;potentialW+=coolingPeakWatts(s);
+  const coolingW=coolingPowerWatts(s,minerW),w=minerW+coolingW,contract=energyContractFor(s),loadFactor=contractLoadFactorAt(s.time,contract),siteMinerW=minerW*loadFactor,siteCoolingW=coolingPowerWatts(s,siteMinerW),siteW=siteMinerW+siteCoolingW;potentialW*=s.skills.includes("undervolt")?.95:1;if(s.overdrive)potentialW*=1.25;potentialW+=coolingPeakWatts(s);
   const f=FACILITIES.find(x=>x.id===s.facility)||FACILITIES[0],cap=f.kw*(s.skills.includes("capacity")?1.1:1);
   const expandedCap=cap*(s.skills.includes("substation")?1.1:1);
-  return{hash,w,minerW,coolingW,kw:w/1000,space,value,count,activeCount,cap:expandedCap,potentialKw:potentialW/1000,offline,offlineCount:offline.reduce((a,x)=>a+x.n,0),within:w/1000<=expandedCap&&space<=f.space};
+  return{hash,w,minerW,coolingW,kw:w/1000,siteMinerW,siteCoolingW,siteW,siteKw:siteW/1000,space,value,count,activeCount,cap:expandedCap,potentialKw:potentialW/1000,offline,offlineCount:offline.reduce((a,x)=>a+x.n,0),within:w/1000<=expandedCap&&space<=f.space,siteWithin:siteW/1000<=expandedCap&&space<=f.space};
 }
 function controlled(){return state.wallets.hot+state.wallets.cold}
 const COUNTERPARTY_LEAD_DAYS=30;
@@ -276,7 +278,7 @@ function log(text,amount="",category=""){
   const entry={id:++state.activitySeq,time:state.time,text,amount,category:category||activityCategory(text),cash:Number(state.cash)||0,btc:controlled(),hash:fleet().hash,price:state.time>=MARKET?priceAt(state.time):null};
   state.activity.unshift(entry);state.log=state.activity.slice(0,8);
 }
-function operating(){const fs=fleet();return state.power&&!gridCutOff()&&!state.policyLock&&!siteOutage()&&!fleetGrounded()&&fs.within&&fs.hash>0}
+function operating(){const fs=fleet(),site=energyFleetLoad();return state.power&&!gridCutOff()&&!state.policyLock&&!siteOutage()&&!fleetGrounded()&&fs.within&&site.within&&fs.hash>0}
 function asicCount(){return HARDWARE.filter(h=>h.era==="ASIC"||h.era==="HYDRO ASIC").reduce((n,h)=>n+(state.hardware[h.id]||0),0)}
 function firmwarePatchCost(s=state){const count=HARDWARE.filter(h=>h.era==="ASIC"||h.era==="HYDRO ASIC").reduce((n,h)=>n+(s.hardware?.[h.id]||0),0);return Math.max(75,count*18)*(s.skills?.includes("swarmmgmt")?.65:1)}
 /* Signed cover lasts longer and fails less often for an operator who treats firmware as
@@ -305,24 +307,25 @@ function announced(item,t=state.time){return !item?.date||at(item.date)<=t+ANNOU
 const CURTAIL_BASE=.05,CURTAIL_SLOPE=.8,CURTAIL_CAP=.6,CURTAIL_CREDIT=1.4;
 function curtailmentIntensityAt(t=state.time){return Math.min(CURTAIL_CAP,CURTAIL_BASE+Math.max(0,energyShock(t)-1)*CURTAIL_SLOPE)}
 function curtailmentIntensity(t=state.time){return state.contract==="curtail"?curtailmentIntensityAt(t):0}
-function curtailmentCreditDaily(watts,t=state.time,r=region()){
-  const intensity=curtailmentIntensity(t);
+function curtailmentCreditDaily(watts,t=state.time,r=region(),contract=powerContract(),baselineWatts=null){
+  const intensity=contract.id==="curtail"?curtailmentIntensityAt(t):0;
   if(!intensity||watts<=0)return 0;
-  // `watts` is the load actually drawn after curtailment; recover the load given back.
-  const released=watts/(1-intensity)*intensity;
+  // `watts` is the load actually drawn after curtailment. The explicit baseline keeps future
+  // solar, storage and DR callers from having to reverse the duty cycle themselves.
+  const baseline=baselineWatts===null?watts/(1-intensity):Math.max(watts,baselineWatts),released=Math.max(0,baseline-watts);
   const credit=released/1000*24*r.kwh*energyShock(t)*CURTAIL_CREDIT;
   // Capped at the power it would have bought. Free electricity during a crisis is a large
   // enough prize; letting the credit run past it turns a big site into a subsidy farm and
   // can drive the whole operating bill negative, which the settlement path never expects.
-  return Math.min(credit,dailyEnergyCostForWatts(watts,t,r));
+  return Math.min(credit,dailyEnergyCostForWatts(watts,t,r,contract));
 }
-function contractLoadFactor(){return state.contract==="curtail"?1-curtailmentIntensity():1}
+function contractLoadFactor(){return contractLoadFactorAt(state.time,powerContract())}
 function contractUptimeFactor(){return state.contract==="curtail"?1-curtailmentIntensity():state.contract==="spot"&&energyShock(state.time)>1?.9:1}
-function energyLoadFactor(){const fs=fleet(),load=fs.cap?fs.kw/fs.cap:0;return 1+Math.pow(Math.max(0,load-.55),2)*1.8}
+function energyLoadFactor(watts=null,capacity=null){const fs=fleet(),loadCapacity=capacity||fs.cap,load=loadCapacity?Math.max(0,Number(watts===null?fs.w:watts))/1000/loadCapacity:0;return 1+Math.pow(Math.max(0,load-.55),2)*1.8}
 function energyEfficiencyFactor(){return (hasSkill("metering")?.96:1)*(hasSkill("curtailment")?.96:1)}
 function powerContract(){return POWER_CONTRACTS.find(x=>x.id===state.contract)||POWER_CONTRACTS[0]}
-function powerRate(r,t=state.time){const c=powerContract(),shock=c.id==="fixed"?1:energyShock(t);return r.kwh*c.mult*shock*energyEfficiencyFactor()*rateMultiplier()*energyLoadFactor()}
-function dailyEnergyCostForWatts(watts,t=state.time,r=region()){return Math.max(0,watts)/1000*24*powerRate(r,t)*(hasSkill("heat")?.96:1)}
+function powerRate(r,t=state.time,c=powerContract(),watts=null){const shock=c.id==="fixed"?1:energyShock(t);return r.kwh*c.mult*shock*energyEfficiencyFactor()*rateMultiplier()*energyLoadFactor(watts)}
+function dailyEnergyCostForWatts(watts,t=state.time,r=region(),c=powerContract()){return Math.max(0,watts)/1000*24*powerRate(r,t,c)*(hasSkill("heat")?.96:1)}
 function hasStaff(id){return state.staff.includes(id)}
 /* HARDWARE PRICES DO NOT HOLD. A machine sold at list while it was the current thing and then
    fell away fast: an S9 listed near $2,100 in 2016 and traded at $100-300 by 2019. The game
@@ -548,6 +551,16 @@ function closeHardwareAlert(inspect=false){
   if(!activateNextHardwareAlert()){state.speed=alerts.resumeSpeed||state.returnSpeed||1;alerts.resumeSpeed=0;setTimer()}
   save();render();
 }
+function advanceVolatility(prev,next,silent=false){
+  if(!volatilityProjectionEnabled())return;
+  volatilityEventSchedule().filter(event=>event.start>prev&&event.start<=next).forEach(event=>{
+    const key=`${event.id}:${event.start}`;if(state.volatilitySeen.includes(key))return;
+    state.volatilitySeen.push(key);renderFullQueued=true;
+    const detail=event.id==="alien-war"?"A fictional alien conflict drives a severe economic meltdown; the modelled price shock can reach 90% at the default setting.":event.summary;
+    log(event.title,detail,"operations");
+    if(!silent)showToast(event.title,`${detail} Price and hash rate paths are shocked temporarily, then recover toward their underlying protocol and growth trends.`,"warning","market");
+  });
+}
 function tick(silent=false){
   if(!state.started||state.ended||state.pendingSettlement)return;
   // A run that began with the first-wallet ceremony does not start until it has a wallet: nothing can be paid to an address that does not exist.
@@ -555,6 +568,7 @@ function tick(silent=false){
   state.lastReal=Date.now();
   const prev=state.time,next=state.sandbox?Math.min(SANDBOX_END,prev+DAY):Math.min(END,prev+DAY),unlockCrossed=timeGatedUnlockCrossed(prev,next),previousSubsidy=subsidyAt(prev),nextSubsidy=subsidyAt(next);state.time=next;
   if(state.sandbox&&nextSubsidy<previousSubsidy)announceProjectedHalving(previousSubsidy,nextSubsidy,silent);
+  advanceVolatility(prev,next,silent);
   advanceLearning();
   advanceThermals();
   advanceMaintenance();
@@ -580,7 +594,7 @@ function tick(silent=false){
   advanceNodeSync(silent);
   if(!silent&&!faucet&&faucetActive(next)&&nextRand()<.05&&!internetCut())triggerFaucet(next);
   const fs=fleet(),r=region(),f=facility(),nodeW=nodePowerWatts();state.operator.periodDays++;
-  const rate=powerRate(r,next),minerWatts=state.power&&state.debt<=0&&!state.policyLock&&!fleetGrounded()?fs.w*contractLoadFactor():0,nodeWatts=nodeHostPowered()?nodeW:0,dailyCosts={energy:dailyEnergyCostForWatts(minerWatts+nodeWatts,next,r)-curtailmentCreditDaily(minerWatts,next,r),rent:f.rent/30.4375,internet:internetMonthlyCost()/30.4375,staff:staffMonthlyCost()/30.4375,insurance:insuranceMonthlyCost()/30.4375,nodeNetwork:(internetCut()?0:totalNodeMonthlyOverhead())/30.4375},daily=Object.values(dailyCosts).reduce((sum,value)=>sum+value,0);
+  const energy=siteEnergyDaily({time:next,region:r,nodeWatts:nodeHostPowered()?nodeW:0,active:state.power&&state.debt<=0&&!state.policyLock&&!fleetGrounded()}),dailyCosts={energy:energy.total,rent:f.rent/30.4375,internet:internetMonthlyCost()/30.4375,staff:staffMonthlyCost()/30.4375,insurance:insuranceMonthlyCost()/30.4375,nodeNetwork:(internetCut()?0:totalNodeMonthlyOverhead())/30.4375},daily=Object.values(dailyCosts).reduce((sum,value)=>sum+value,0);
   Object.entries(dailyCosts).forEach(([key,value])=>state.billLedger[key]=(state.billLedger[key]||0)+value);state.bill+=daily;state.powerSpent+=daily;
   if(state.mode==="pool"&&!poolClosed(state.pool)&&!poolEligible()){const lostPool=poolData();state.mode="solo";log(`${lostPool.name} no longer available`,`Requires ${SKILLS.find(x=>x.id===lostPool.requires)?.name||lostPool.requires} · failed over to solo mining`,"operations");if(!silent)showToast("Pool unavailable",`${lostPool.name} needs ${SKILLS.find(x=>x.id===lostPool.requires)?.name||lostPool.requires}. Your fleet has failed over to solo mining rather than quietly mining solo while the tab still said pool.`,"bad","pools")}
   if(state.mode==="pool"&&poolClosed(state.pool)){const closedPool=poolData();state.mode="solo";
@@ -634,4 +648,4 @@ function setTimer(){
   if(state.speed>0){state.lastReal=Date.now();timer=setInterval(tick,Math.max(70,2000/state.speed))}
 }
 function startMempoolTimer(){clearInterval(mempoolTimer);mempoolTimer=setInterval(()=>{if(activeTab==="dashboard"&&state.speed>0)refreshDashboardVisuals()},1200)}
-function save(){if(typeof updateCorrespondence==="function")updateCorrespondence();return writeSave(state)}
+function save(){normalizeEnergyState(state);if(typeof updateCorrespondence==="function")updateCorrespondence();return writeSave(state)}

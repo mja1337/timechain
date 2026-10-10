@@ -102,8 +102,8 @@ const changed = [...new Set([
   ...git("ls-files", "--others", "--exclude-standard").split("\n"),
 ].filter(Boolean))].sort();
 
-const baseText = git("show", `${mergeBase}:${DATA}`);
-const headText = readFileSync(resolve(ROOT, DATA), "utf8");
+const baseText = git("show", `${mergeBase}:${DATA}`).replace(/\r\n/g, "\n");
+const headText = readFileSync(resolve(ROOT, DATA), "utf8").replace(/\r\n/g, "\n");
 const dataChanged = baseText !== headText;
 console.log(`check-data-refresh: mode ${mode}, branch "${branch || "(detached)"}", base ${baseRef} (${mergeBase.slice(0, 7)}), ${changed.length} file(s) changed`);
 

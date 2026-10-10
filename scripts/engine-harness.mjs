@@ -40,6 +40,7 @@ const FILES = [
   "src/engine/connectivity.js",
   "src/engine/offline.js",
   "src/engine/thermal.js",
+  "src/engine/energy.js",
   "src/engine/fleet-ops.js",
   "src/engine/secondary.js",
   "src/engine/nodes.js",

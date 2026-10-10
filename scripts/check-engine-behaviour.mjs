@@ -1230,6 +1230,19 @@ rule("curtailment is paid for the capacity it releases", () => {
   assert(credit > 0, "releasing capacity during a shock earns nothing, which is the only reason anyone signs the contract");
 });
 
+rule("curtailment reduces the physical electrical and thermal load", () => {
+  const result = json(`(()=>{
+    ${SITE(`state.time=at("2022-06-01");state.facility="campus";state.region="texas";state.hardware={s19:600};state.thermal.equipment={};state.contract="standard";`)}
+    const full={site:energyFleetLoad().siteW,heat:roomHeatWatts()};
+    state.contract="curtail";
+    const reduced={site:energyFleetLoad().siteW,heat:roomHeatWatts(),within:energyFleetLoad().within};
+    return{full,reduced};
+  })()`);
+  assert(result.reduced.site<result.full.site, `curtailment leaves the physical site draw unchanged (${result.full.site} W)`);
+  assert(result.reduced.heat<result.full.heat, "curtailment leaves room heat unchanged");
+  assert(result.reduced.within, "curtailment does not recalculate site headroom from the reduced load");
+});
+
 rule("the credit never turns the operating bill negative", () => {
   const worst = run(`(()=>{let worst=Infinity;
     for(const [reg,fac,hw,n] of [["iran","campus","s19",2700],["sichuan","megacampus","s21xp",49000],
