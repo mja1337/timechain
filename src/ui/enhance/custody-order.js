@@ -46,7 +46,7 @@ function coldSetupSteps(){
     done:keys.length>0,
     title:"Make a key on it",
     why:"Generate an unpredictable secret on the signer. A copied secret gives someone else the same signing power; in a single-key wallet that is enough to spend. Multisig needs independent secrets, so restoring one seed onto several devices does not create several approvals.",
-    action:keyless?(!workshopPrepared(keyless)?`<button class="action small primary" data-action="workshop-select" data-id="${workshopGroup(custodyProduct(keyless.product))}" data-value="${keyless.uid}">Inspect and prepare this signer</button>`:keyless.restoring?`<span class="label">Restoring your key from its backup</span>`:(orphan&&custodyKeyRestorable(orphan))?`<button class="action small primary" data-action="custody-restore-key" data-id="${keyless.uid}" data-value="${orphan.id}">Restore your key from its backup</button>`:`<button class="action small primary" data-action="custody-genkey" data-id="${keyless.uid}">Generate a key</button>`):""
+    action:keyless?(!workshopPrepared(keyless)?`<button class="action small primary" data-action="workshop-focus" data-id="${workshopGroup(custodyProduct(keyless.product))}" data-value="${keyless.uid}">Open this signer in the workshop</button>`:keyless.restoring?`<span class="label">Restoring your key from its backup</span>`:(orphan&&custodyKeyRestorable(orphan))?`<button class="action small primary" data-action="custody-restore-key" data-id="${keyless.uid}" data-value="${orphan.id}">Restore your key from its backup</button>`:`<button class="action small primary" data-action="custody-genkey" data-id="${keyless.uid}">Generate a key</button>`):""
   });
   // 3. A backup
   steps.push({
@@ -85,11 +85,11 @@ function coldSetupCard(){
 
 /* The order of the page. Each entry is a heading as the card prints it (lower case) and the group it belongs to. */
 const CUSTODY_GROUPS=[
-  {id:"coins",title:"Your coins",note:"Where your bitcoin is today, and how to move it.",cards:["your keys decide who can spend your bitcoin","your custody workshop","set up cold storage","your online wallet","wallet allocation","self-custody actions"]},
-  {id:"equipment",title:"Equipment and backups",note:"Buy a signer, make a key on it, back it up, and decide where each piece is kept.",cards:["custody supply","devices you own","keys, signers and recovery","where things are kept"]},
-  {id:"standing",title:"Spending, lending and theft cover",note:"How a reserve payment is approved, then how the game's key and recovery checks affect borrowing and cover.",cards:["spending from cold storage","what lenders and insurers see","bitcoin calls to action"]},
-  {id:"verify",title:"Verification",note:"Your node checks the rules for you. It does not hold your coins.",cards:["your node","full-node operations","wallet client"]},
-  {id:"learn",title:"Learn",note:"Optional: the ideas behind all of the above, using your own balances.",cards:["custody map","custody threat lab"]},
+  {id:"start",title:"1. Build the setup",note:"Prepare a signer, create a key, record recovery, then choose the rule that authorises spending.",cards:["your keys decide who can spend your bitcoin","your custody workshop","set up cold storage","custody supply","devices you own","keys, signers and recovery"]},
+  {id:"money",title:"2. Put coins in the right place",note:"Keep daily spending money available, and move reserves behind the setup you have prepared.",cards:["your online wallet","wallet allocation","self-custody actions","where things are kept"]},
+  {id:"spend",title:"3. Practice spending and recovery",note:"A reserve is useful only when the signing path and recovery plan work when a bill is due.",cards:["spending from cold storage","what lenders and insurers see","bitcoin calls to action"]},
+  {id:"verify",title:"4. Check the network",note:"Your node checks the public record. It does not hold private keys or replace a signer.",cards:["your node","full-node operations","wallet client"]},
+  {id:"learn",title:"5. Test the weak points",note:"Use the map and scenarios to see what malware, a frozen venue or a lost signer changes.",cards:["custody map","custody threat lab"]},
 ];
 function orderCustodyCards(grid){
   if(!grid)return;

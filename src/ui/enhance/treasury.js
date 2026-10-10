@@ -56,8 +56,9 @@ function settlementReserveOnly(){
   const cold=state.wallets.cold||0;if(cold<=1e-9)return "";
   const reason=fetchReserveBlockReason(),plan=reservePlan(false),rush=reservePlan(true),short=Math.max(0,p.due-state.cash);
   const saves=rush.days<plan.days,days=`${plan.days} day${plan.days===1?"":"s"}`,rushDays=`${rush.days} day${rush.days===1?"":"s"}`;
+  const arrears=state.debt||0,totalNeed=short+arrears;
   const effect=reason?`<strong>Not available:</strong> ${reason}`
-    :`Immediate effect: ${fmtUsd(short)} is carried into arrears and the site keeps running until ${dateFmt(nextBillDate())}, while ${fmtBtc(plan.gross)} is signed out of cold storage. It takes ${days} and costs ${fmtBtc(plan.fee)} in network fees. Consequence: it lands in your hot wallet; sell it at the Market and pay the arrears before the next bill or the grid is cut.${plan.covers?"":" It is not enough to cover the whole bill."}`;
+    :`Immediate effect: ${fmtUsd(totalNeed)} (${arrears?`${fmtUsd(arrears)} existing arrears plus `:""}${fmtUsd(short)} from this bill) is carried forward while ${fmtBtc(plan.gross)} is signed out of cold storage. It takes ${days} and costs ${fmtBtc(plan.fee)} in network fees. Consequence: it lands in your hot wallet; sell it at the Market and clear Finance before the next bill or the grid stays cut.${plan.covers?"":" It is not enough to cover the whole amount."}`;
   return `<article class="venue"><div class="risk medium">RESERVE · ${days.toUpperCase()} AWAY</div><h3>Fetch the reserve</h3><p>${effect}</p><div class="modal-actions"><button class="action small primary" data-action="settle-fetch" ${reason?`disabled title="${escapeHtml(reason)}"`:""}>Fetch · ${days}</button><button class="action small" data-action="settle-fetch-rush" title="${reason?escapeHtml(reason):saves?`Pays ${RUSH_FEE_MULTIPLE}× the fee to skip the slow steps. A quorum is never faster than two days.`:"A rush would not arrive any sooner for this wallet, so it would only cost more."}" ${reason||!saves?"disabled":""}>${saves?`Rush · ${rushDays} · ${fmtBtc(rush.fee)}`:"Rush · no faster"}</button></div></article>`;
 }
 

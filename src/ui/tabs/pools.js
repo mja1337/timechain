@@ -68,8 +68,8 @@ function payoutCustodyCard(){
   return `<section class="card span-12 payout-card"><div class="card-head"><h2>Where your mining income arrives</h2><div class="meta">${pooled?"POOL BALANCE · NOT YET YOURS":"SOLO · PAID DIRECT TO YOUR ADDRESS"}</div></div>
     <div class="card-pad">
       <p class="lead">${pooled
-        ? `Pool mining credits an account <em>at the pool</em>. ${poolData().name} holds those coins in its own wallet under its own keys, and sends them on when your balance crosses your payout threshold. Until it does, you are an unsecured creditor of a company you have never met.`
-        : `Solo mining pays the coinbase output of any block you find straight to an address you control. No threshold, no withdrawal fee, and nobody who can decide not to pay you - which is the half of the solo trade-off that the variance usually hides.`}</p>
+        ? `Pool mining credits an account <em>at the pool</em>. ${poolData().name} holds those coins in its own wallet under its own keys, and sends them on when your balance reaches the payout threshold (the minimum amount it waits for). Until the pool sends the coins to your wallet, you are relying on that company to pay you.`
+        : `Solo mining pays the reward from any block you find straight to an address you control. There is no payout threshold or pool holding your money, but a small fleet may wait a long time between rewards.`}</p>
       <div class="intro-grid">
         <div class="intro-fact"><b class="${a.balance>0?"down":""}">${fmtBtc(a.balance)}</b><span>${pooled?"held by the pool right now":"never held by a pool"}</span></div>
         <div class="intro-fact"><b>${fmtBtc(a.threshold)}</b><span>payout threshold${daysToPayout!==null?` · about ${fmtNum(daysToPayout)}d away`:payoutOutOfReach?" · out of reach at this hash rate":""}</span></div>
@@ -80,6 +80,7 @@ function payoutCustodyCard(){
       ${a.frozen>0?`<p class="modal-note" style="color:var(--red)">${fmtBtc(a.frozen)} is stranded in a pool that stopped paying. It is a claim, not a balance.</p>`:""}
       <div class="card-head"><h3>Payout threshold</h3><div class="meta">COST AGAINST COUNTERPARTY EXPOSURE</div></div>
       <p class="modal-note">Every payout is an on-chain transaction and costs ${fmtBtc(fee)}${price?` (about ${fmtUsd(fee*price)})`:""}. A low threshold pays you often and spends that fee often - at ${fmtBtc(a.threshold)} it is <strong>${(feeShare*100).toFixed(2)}%</strong> of each payment. A high threshold saves the fee and lends the pool more of your money for longer. There is no right answer; there is a side to pick.</p>
+      <p class="modal-note">Every payout is a Bitcoin payment recorded on the public chain and costs ${fmtBtc(fee)}${price?` (about ${fmtUsd(fee*price)})`:""}. A low threshold pays you often but spends that fee often - at ${fmtBtc(a.threshold)} it is <strong>${(feeShare*100).toFixed(2)}%</strong> of each payment. A high threshold saves the fee but leaves more of your money with the pool for longer. There is no right answer; choose the timing and trust trade-off you prefer.</p>
       <div class="payout-thresholds">${PAYOUT_THRESHOLDS.map(v=>`<button class="action small ${v===a.threshold?"primary":""}" data-action="payout-threshold" data-value="${v}" ${v===a.threshold?"disabled":""}>${fmtBtc(v)}<small>${((fee/v)*100).toFixed(2)}% to fees</small></button>`).join("")}</div>
       <div class="card-head"><h3>Payout destination</h3><div class="meta">THE ONE CUSTODY DECISION A MINER CANNOT AVOID</div></div>
       <div class="payout-destinations">${destinations.map(d=>{

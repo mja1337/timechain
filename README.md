@@ -2,7 +2,7 @@
 
 > A game-first history of Bitcoin, from the Genesis Block to today. Start with one computer. Mine, keep your keys safe and stay solvent as the technology, the network and the world change.
 
-**Beta 1.1** · plays in the browser, free, no account · live at https://mja1337.github.io/timechain/
+**Beta 1.2** · plays in the browser, free, no account · live at https://mja1337.github.io/timechain/
 
 ## What you do
 
@@ -75,13 +75,15 @@ node scripts/check-engine-behaviour.mjs
 
 Contracts are written to fail for a reason a reader can act on, and new ones are worth mutation-testing: reintroduce the bug and confirm the check catches it.
 
+The market-specific browser checklist is in [`docs/market-validation.md`](docs/market-validation.md). Use it for every change that touches exchange tickets, transaction reviews, settlement rescue or market copy: automated checks prove the source and engine contracts, while the browser flow proves that a quote can be reviewed, cancelled and confirmed without a render or console failure.
+
 The first three suites match source text (the engine-behaviour suite does not). That is fast and catches a great deal, but it pins the implementation rather than the rule: three of them broke during one refactoring session while the behaviour they guarded was intact, because a function had been renamed or an expression had moved. `check-engine-behaviour.mjs` exists for the other half of the problem - it runs the engine, so a rename passes and only a change in the game's economics fails. **When a check is about what the simulation does rather than how the source reads, put it there.** Pinning an exact calibration constant is usually the wrong instinct: assert the property the constant is meant to produce, so the number can be retuned without a false alarm.
 
 ## Releasing and rolling back
 
 GitHub Pages builds from `main`, so **every push to `main` is live within about 40 seconds**. Nothing else stands between a commit and a player.
 
-- **Every local asset URL carries the version** (`?v=1.1`, from `APP_VERSION`), in `index.html` and in the lazily loaded 3D scripts. Pages lets a browser keep a file for ten minutes, so without this a player could load new modules beside old ones, and the load-order rules in `ARCHITECTURE.md` mean that can throw. The structure check fails if any asset lacks the current version. Because of this, **bump `APP_VERSION` for every change that ships, hotfixes included** (`1.0`, `1.1`, ...): the bump is what makes browsers fetch the new files together. The release label (`Beta 1.1`) is `APP_STAGE` + `APP_VERSION`.
+- **Every local asset URL carries the version** (`?v=1.2`, from `APP_VERSION`), in `index.html` and in the lazily loaded 3D scripts. Pages lets a browser keep a file for ten minutes, so without this a player could load new modules beside old ones, and the load-order rules in `ARCHITECTURE.md` mean that can throw. The structure check fails if any asset lacks the current version. Because of this, **bump `APP_VERSION` for every change that ships, hotfixes included** (`1.0`, `1.1`, ...): the bump is what makes browsers fetch the new files together. The release label (`Beta 1.2`) is `APP_STAGE` + `APP_VERSION`.
 - **Before pushing a release:** bump `APP_VERSION`, add the changelog entry and update Method, then run all four checks on the exact commit you are pushing. Check the exit codes, not just the output.
 - **The release tag** marks the build that went out: `git tag -a beta-1.0 -m "Beta 1.1"`, pushed with `git push origin beta-1.0`. Each push that ships gets its own, and rollback uses the newest.
 - **Rolling back** without rewriting history: revert everything after the tag, then push.

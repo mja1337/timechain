@@ -32,6 +32,11 @@ function selectWorkshop(group,uid){
   if(!["offline","qr","hardware","nodes"].includes(group))return;
   state.custody.workshop={group,uid:uid||null};save();render();
 }
+function focusWorkshopDevice(group,uid){
+  if(!["offline","qr","hardware","nodes"].includes(group))return;
+  state.custody.workshop={group,uid:uid||null};save();render();
+  requestAnimationFrame(()=>document.querySelector(".custody-workshop")?.scrollIntoView({behavior:"smooth",block:"start"}));
+}
 function inspectWorkshopDevice(uid){
   const d=custodyDevice(uid);if(!d||d.destroyed||d.place==="transit")return;
   d.inspected=true;log("Signer inspected","Delivery and source reviewed; appearance alone cannot prove trust","custody");save();render();

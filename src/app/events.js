@@ -6,6 +6,10 @@ document.getElementById("app").addEventListener("click",e=>{
   const b=e.target.closest("[data-action]");if(!b||b.disabled)return;const a=b.dataset.action,v=b.dataset.value,id=b.dataset.id,part=b.dataset.part;
   if(b.closest(".toast")){dismissToast();if(a==="dismiss-toast")return}
   if(["notification-settings","notification-reduction","notification-prompt-close"].includes(a)){notificationAction(a,v);return}
+  if(a==="settings"){adminPageOpen=true;render();return}
+  if(a==="admin-close"){adminPageOpen=false;render();return}
+  if(a==="admin-toggle"){toggleAdminConfig(b.dataset.adminKey,b.checked);return}
+  if(a==="admin-reset"){resetAdminConfig();return}
   if(a==="tab"&&recentTouchTab&&recentTouchTab.value===v&&Date.now()-recentTouchTab.at<800){recentTouchTab=null;return}
   if(a==="blocked-help"){showToast("Why this is unavailable",b.dataset.help||"This action is not available in the current state.");return}
   if(a==="trade-preset"){setTradeAmount(b.dataset.tradeKey,Number(v));return}
@@ -34,7 +38,11 @@ document.getElementById("app").addEventListener("click",e=>{
   else if(a==="wallet-demo"){state.walletSetup={done:false,step:0,rolls:[],keyHex:"",demo:true,resumeSpeed:state.speed};state.speed=0;save();setTimer();render()}
   else if(a==="wallet-setup-start"){state.walletSetup.step=1;save();render()}
   else if(a==="dice-roll")rollDie();
+  else if(a==="dice-record")recordDieRoll(v||document.querySelector("[data-dice-face]")?.value);
   else if(a==="dice-finish")finishRolling();
+  else if(a==="wallet-paper-recorded")recordWalletPaper();
+  else if(a==="wallet-paper-destroyed")destroyWalletPaper();
+  else if(a==="wallet-oath")takeWalletOath();
   else if(a==="wallet-setup-skip")skipWalletSetup();
   else if(a==="wallet-setup-done")completeWalletSetup(v==="backup");
   else if(a==="upgrade-wallet-software")upgradeWalletSoftware();
@@ -58,6 +66,7 @@ document.getElementById("app").addEventListener("click",e=>{
   else if(a==="payout-destination")setPayoutDestination(v);else if(a==="payout-threshold")setPayoutThreshold(v);else if(a==="sell-cooling")sellCooling(id);else if(a==="cancel-cooling")cancelCoolingOrder(id);else if(a==="buy-cooling")buyCooling(id);
   else if(a==="gift-card")buyGiftCard(id,Number(v));
   else if(a==="workshop-select")selectWorkshop(id,v);
+  else if(a==="workshop-focus")focusWorkshopDevice(id,v);
   else if(a==="workshop-inspect")inspectWorkshopDevice(id);
   else if(a==="workshop-prepare")prepareWorkshopDevice(id);
   else if(a==="workshop-locations"){const el=document.querySelector('.workshop-locations');if(el){el.open=true;el.scrollIntoView({block:"center",behavior:"smooth"})}}
@@ -94,6 +103,9 @@ document.getElementById("app").addEventListener("click",e=>{
   else if(a==="node-prune")toggleNodePruning();
   else if(a==="node-mode")setNodeMode(v);
   else if(a==="buy-backup-node")buyBackupNode();
+  else if(a==="buy-phone")buyPhone();
+  else if(a==="toggle-account-2fa")toggleAccountTwoFA(v);
+  else if(a==="upgrade-account-security")upgradeAccountSecurity();
   else if(a==="donate-btc")donateBtc(id,Number(v));
   else if(a==="buy-strategy")buyStrategy(id,Number(v));
   else if(a==="sell-strategy")sellStrategy(id,Number(v));

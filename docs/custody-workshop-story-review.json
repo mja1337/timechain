@@ -9,50 +9,50 @@
     "pc": [
       {
         "title": "A place for the secret",
-        "speaker": "FreeBill · equipment desk",
-        "scene": "Dennis arrives with a computer he also uses for games, invoices and “a few essential browser extensions”. FreeBill slides a separate box across the bench. This one gets a single job.",
+        "speaker": "claude1337 · equipment desk",
+        "scene": "grok69420 arrives with a computer he also uses for games, invoices and “a few essential browser extensions”. claude1337 slides a separate box across the bench. This one gets a single job.",
         "why": "Every extra task brings more software and more chances to expose the signing environment. A dedicated device gives you a boundary you can understand and maintain.",
         "next": "Choose the equipment that fits the job. The purchase buys hardware; spending authority comes later."
       },
       {
         "title": "The parcel is not the proof",
-        "speaker": "Dennis · receiving department",
-        "scene": "The parcel arrives. Dennis admires the sticker: “Tamper-proof. It says so.” You keep the packaging, check the source and inspect what actually arrived.",
+        "speaker": "grok69420 · receiving department",
+        "scene": "The parcel arrives. grok69420 admires the sticker: “Tamper-proof. It says so.” You keep the packaging, check the source and inspect what actually arrived.",
         "why": "You are about to entrust this machine with a secret. Delivery checks can reveal warning signs, but a clean-looking case cannot prove that its electronics or software are trustworthy.",
         "next": "Inspect the device before setup. Follow the checks appropriate to this device and its source."
       },
       {
         "title": "Decide what gets near the key",
-        "speaker": "FreeBill · software desk",
-        "scene": "Dennis offers to email over his wallet installer. The attachment is called DEFINITELY_THE_REAL_ONE. FreeBill asks where it came from. Dennis asks whether that matters.",
+        "speaker": "claude1337 · software desk",
+        "scene": "grok69420 offers to email over his wallet installer. The attachment is called DEFINITELY_THE_REAL_ONE. claude1337 asks where it came from. grok69420 asks whether that matters.",
         "why": "The software handles the secret or asks the signer to approve a payment. Its source and updates become part of your trust. Keeping the signing computer offline reduces remote exposure; transferred files still deserve scrutiny.",
         "next": "Prepare the signing software from a checked source and establish the offline workflow."
       },
       {
         "title": "The moment a secret becomes authority",
-        "speaker": "FreeBill · key ceremony",
+        "speaker": "claude1337 · key ceremony",
         "scene": "No passport. No security question. No mother’s maiden name. The device prepares a secret, and you are about to take responsibility for what it can authorise.",
         "why": "A private key lets its holder produce a valid signature. For this single-key wallet, that is spending authority. A PIN may protect the device, but it does not let a helpdesk replace a lost key.",
         "next": "Create the key in the intended signing environment. Then prepare recovery before relying on it."
       },
       {
         "title": "Plan for the day the box goes quiet",
-        "speaker": "Dennis · future incident report",
-        "scene": "Picture tomorrow: the device will not start. Dennis suggests turning it off and on again. You would prefer a plan that survives the second attempt.",
+        "speaker": "grok69420 · future incident report",
+        "scene": "Picture tomorrow: the device will not start. grok69420 suggests turning it off and on again. You would prefer a plan that survives the second attempt.",
         "why": "A recovery copy gives you a route back if the signer fails. It also creates another place from which the secret can be stolen. Durability and secrecy are separate problems.",
         "next": "Record the recovery material privately. Choose its medium, then decide who can reach it."
       },
       {
         "title": "Two copies, one fire",
-        "speaker": "FreeBill · storage desk",
-        "scene": "You put the recovery copy beside the signer. Dennis calls this “double security”. FreeBill draws one circle around the desk: one incident can still reach both.",
+        "speaker": "claude1337 · storage desk",
+        "scene": "You put the recovery copy beside the signer. grok69420 calls this “double security”. claude1337 draws one circle around the desk: one incident can still reach both.",
         "why": "Copies at the same site can share a disaster. Separate storage changes that risk, while adding travel, access and possibly another person to the plan. Another copy of this key remains the same signing authority.",
         "next": "Choose a location deliberately, then assign the key to the wallet’s spending rule."
       },
       {
         "title": "Make the plan outlive the afternoon",
-        "speaker": "FreeBill · handover",
-        "scene": "The wallet is assigned. Dennis starts making a CERTIFIED IMPOSSIBLE TO LOSE label. You ask him to leave room for the date of the next recovery rehearsal.",
+        "speaker": "claude1337 · handover",
+        "scene": "The wallet is assigned. grok69420 starts making a CERTIFIED IMPOSSIBLE TO LOSE label. You ask him to leave room for the date of the next recovery rehearsal.",
         "why": "This wallet uses one key. Its recovery copy can restore that authority, but recording a copy has not demonstrated that you can recover from it. People forget procedures; software and circumstances change.",
         "next": "The next chapter is a recovery rehearsal. That exercise is planned for the game; this concept has only recorded the setup."
       }
@@ -60,50 +60,50 @@
     "hw": [
       {
         "title": "A smaller machine, a smaller job",
-        "speaker": "FreeBill · equipment desk",
-        "scene": "Dennis wants the biggest computer in the shop. You choose a little signer with a screen and physical controls. It will still need a computer running a compatible client.",
+        "speaker": "claude1337 · equipment desk",
+        "scene": "grok69420 wants the biggest computer in the shop. You choose a little signer with a screen and physical controls. It will still need a computer running a compatible client.",
         "why": "The dedicated device holds the signing secret. The client prepares the payment and connects to chain data. You are choosing a system with several dependencies, even when the hardware comes in one box.",
         "next": "Buy the signer, then inspect it before configuring its client."
       },
       {
         "title": "The parcel is not the proof",
-        "speaker": "Dennis · receiving department",
-        "scene": "The parcel arrives. Dennis admires the sticker: “Tamper-proof. It says so.” You keep the packaging, check the source and inspect what actually arrived.",
+        "speaker": "grok69420 · receiving department",
+        "scene": "The parcel arrives. grok69420 admires the sticker: “Tamper-proof. It says so.” You keep the packaging, check the source and inspect what actually arrived.",
         "why": "You are about to entrust this machine with a secret. Delivery checks can reveal warning signs, but a clean-looking case cannot prove that its electronics or software are trustworthy.",
         "next": "Inspect the device before setup. Follow the checks appropriate to this device and its source."
       },
       {
         "title": "The app has a proposal",
-        "speaker": "Dennis · software department",
-        "scene": "Dennis finds an enormous download button. The app promises to make everything effortless. On the bench, the signer waits for you to decide what it should approve.",
+        "speaker": "grok69420 · software department",
+        "scene": "grok69420 finds an enormous download button. The app promises to make everything effortless. On the bench, the signer waits for you to decide what it should approve.",
         "why": "A client can present the wrong recipient or payment. Its developer, updates and data server matter. A separate compatible client changes those dependencies; it does not remove the need to check the signer’s screen.",
         "next": "Choose a compatible client and data source. Check the download source; review payment details on the device before signing."
       },
       {
         "title": "The moment a secret becomes authority",
-        "speaker": "FreeBill · key ceremony",
+        "speaker": "claude1337 · key ceremony",
         "scene": "No passport. No security question. No mother’s maiden name. The device prepares a secret, and you are about to take responsibility for what it can authorise.",
         "why": "A private key lets its holder produce a valid signature. For this single-key wallet, that is spending authority. A PIN may protect the device, but it does not let a helpdesk replace a lost key.",
         "next": "Create the key in the intended signing environment. Then prepare recovery before relying on it."
       },
       {
         "title": "Plan for the day the box goes quiet",
-        "speaker": "Dennis · future incident report",
-        "scene": "Picture tomorrow: the device will not start. Dennis suggests turning it off and on again. You would prefer a plan that survives the second attempt.",
+        "speaker": "grok69420 · future incident report",
+        "scene": "Picture tomorrow: the device will not start. grok69420 suggests turning it off and on again. You would prefer a plan that survives the second attempt.",
         "why": "A recovery copy gives you a route back if the signer fails. It also creates another place from which the secret can be stolen. Durability and secrecy are separate problems.",
         "next": "Record the recovery material privately. Choose its medium, then decide who can reach it."
       },
       {
         "title": "Two copies, one fire",
-        "speaker": "FreeBill · storage desk",
-        "scene": "You put the recovery copy beside the signer. Dennis calls this “double security”. FreeBill draws one circle around the desk: one incident can still reach both.",
+        "speaker": "claude1337 · storage desk",
+        "scene": "You put the recovery copy beside the signer. grok69420 calls this “double security”. claude1337 draws one circle around the desk: one incident can still reach both.",
         "why": "Copies at the same site can share a disaster. Separate storage changes that risk, while adding travel, access and possibly another person to the plan. Another copy of this key remains the same signing authority.",
         "next": "Choose a location deliberately, then assign the key to the wallet’s spending rule."
       },
       {
         "title": "Make the plan outlive the afternoon",
-        "speaker": "FreeBill · handover",
-        "scene": "The wallet is assigned. Dennis starts making a CERTIFIED IMPOSSIBLE TO LOSE label. You ask him to leave room for the date of the next recovery rehearsal.",
+        "speaker": "claude1337 · handover",
+        "scene": "The wallet is assigned. grok69420 starts making a CERTIFIED IMPOSSIBLE TO LOSE label. You ask him to leave room for the date of the next recovery rehearsal.",
         "why": "This wallet uses one key. Its recovery copy can restore that authority, but recording a copy has not demonstrated that you can recover from it. People forget procedures; software and circumstances change.",
         "next": "The next chapter is a recovery rehearsal. That exercise is planned for the game; this concept has only recorded the setup."
       }
@@ -111,50 +111,50 @@
     "qr": [
       {
         "title": "A camera instead of a connection",
-        "speaker": "FreeBill · equipment desk",
-        "scene": "Dennis asks for the Wi-Fi password. You point to the camera. This signer will receive a proposed transaction as a QR image and return its signature the same way.",
+        "speaker": "claude1337 · equipment desk",
+        "scene": "grok69420 asks for the Wi-Fi password. You point to the camera. This signer will receive a proposed transaction as a QR image and return its signature the same way.",
         "why": "The camera creates a deliberate route for transaction data. You still depend on the signing software and on checking what the device displays. A QR code is a carrier, not a promise about the payment inside it.",
         "next": "Buy the signer kit and its boot media. The media starts the software; it is not the recovery copy."
       },
       {
         "title": "The parcel is not the proof",
-        "speaker": "Dennis · receiving department",
-        "scene": "The parcel arrives. Dennis admires the sticker: “Tamper-proof. It says so.” You keep the packaging, check the source and inspect what actually arrived.",
+        "speaker": "grok69420 · receiving department",
+        "scene": "The parcel arrives. grok69420 admires the sticker: “Tamper-proof. It says so.” You keep the packaging, check the source and inspect what actually arrived.",
         "why": "You are about to entrust this machine with a secret. Delivery checks can reveal warning signs, but a clean-looking case cannot prove that its electronics or software are trustworthy.",
         "next": "Inspect the device before setup. Follow the checks appropriate to this device and its source."
       },
       {
         "title": "Read the message before answering",
-        "speaker": "Dennis · camera test",
-        "scene": "The screen recognises a QR image. Dennis applauds: “It scanned. We’re safe.” FreeBill asks whose payment the image is proposing.",
+        "speaker": "grok69420 · camera test",
+        "scene": "The screen recognises a QR image. grok69420 applauds: “It scanned. We’re safe.” claude1337 asks whose payment the image is proposing.",
         "why": "The software interprets the proposal and shows the details you will approve. This concept’s signer reloads its key when needed, so the recovery material remains central to using it.",
         "next": "Check the signing software and the scan-and-review workflow before creating a key."
       },
       {
         "title": "The moment a secret becomes authority",
-        "speaker": "FreeBill · key ceremony",
+        "speaker": "claude1337 · key ceremony",
         "scene": "No passport. No security question. No mother’s maiden name. The device prepares a secret, and you are about to take responsibility for what it can authorise.",
         "why": "A private key lets its holder produce a valid signature. For this single-key wallet, that is spending authority. A PIN may protect the device, but it does not let a helpdesk replace a lost key.",
         "next": "Create the key in the intended signing environment. Then prepare recovery before relying on it."
       },
       {
         "title": "Plan for the day the box goes quiet",
-        "speaker": "Dennis · future incident report",
-        "scene": "Picture tomorrow: the device will not start. Dennis suggests turning it off and on again. You would prefer a plan that survives the second attempt.",
+        "speaker": "grok69420 · future incident report",
+        "scene": "Picture tomorrow: the device will not start. grok69420 suggests turning it off and on again. You would prefer a plan that survives the second attempt.",
         "why": "A recovery copy gives you a route back if the signer fails. It also creates another place from which the secret can be stolen. Durability and secrecy are separate problems.",
         "next": "Record the recovery material privately. Choose its medium, then decide who can reach it."
       },
       {
         "title": "Two copies, one fire",
-        "speaker": "FreeBill · storage desk",
-        "scene": "You put the recovery copy beside the signer. Dennis calls this “double security”. FreeBill draws one circle around the desk: one incident can still reach both.",
+        "speaker": "claude1337 · storage desk",
+        "scene": "You put the recovery copy beside the signer. grok69420 calls this “double security”. claude1337 draws one circle around the desk: one incident can still reach both.",
         "why": "Copies at the same site can share a disaster. Separate storage changes that risk, while adding travel, access and possibly another person to the plan. Another copy of this key remains the same signing authority.",
         "next": "Choose a location deliberately, then assign the key to the wallet’s spending rule."
       },
       {
         "title": "Make the plan outlive the afternoon",
-        "speaker": "FreeBill · handover",
-        "scene": "The wallet is assigned. Dennis starts making a CERTIFIED IMPOSSIBLE TO LOSE label. You ask him to leave room for the date of the next recovery rehearsal.",
+        "speaker": "claude1337 · handover",
+        "scene": "The wallet is assigned. grok69420 starts making a CERTIFIED IMPOSSIBLE TO LOSE label. You ask him to leave room for the date of the next recovery rehearsal.",
         "why": "This wallet uses one key. Its recovery copy can restore that authority, but recording a copy has not demonstrated that you can recover from it. People forget procedures; software and circumstances change.",
         "next": "The next chapter is a recovery rehearsal. That exercise is planned for the game; this concept has only recorded the setup."
       }
@@ -162,29 +162,29 @@
     "node": [
       {
         "title": "Ask your own machine",
-        "speaker": "FreeBill · network desk",
-        "scene": "The wallet app says a payment is confirmed. Dennis believes the cheerful green tick. You decide to run a machine that checks the chain behind that claim.",
+        "speaker": "claude1337 · network desk",
+        "scene": "The wallet app says a payment is confirmed. grok69420 believes the cheerful green tick. You decide to run a machine that checks the chain behind that claim.",
         "why": "A full node checks blocks and transactions against the rules it runs. You take responsibility for a computer that needs storage, bandwidth, power and upkeep.",
         "next": "Choose a complete computer for verification. Keep signing keys on a separate device."
       },
       {
         "title": "A witness needs somewhere to work",
-        "speaker": "Dennis · installation crew",
-        "scene": "Dennis wedges the node behind a heater. It fits beautifully, provided you never need to see the cables again. FreeBill moves it somewhere you can maintain it.",
+        "speaker": "grok69420 · installation crew",
+        "scene": "grok69420 wedges the node behind a heater. It fits beautifully, provided you never need to see the cables again. claude1337 moves it somewhere you can maintain it.",
         "why": "Verification depends on the machine continuing to run. Power, cooling, storage and connectivity become practical responsibilities rather than background services somebody else handles.",
         "next": "Inspect the computer and prepare it for a sustained network role."
       },
       {
         "title": "History takes time to check",
-        "speaker": "FreeBill · first synchronisation",
-        "scene": "The machine starts working through the chain. Dennis asks why it cannot just trust the latest balance. That would save time. It would also skip the job you bought it for.",
+        "speaker": "claude1337 · first synchronisation",
+        "scene": "The machine starts working through the chain. grok69420 asks why it cannot just trust the latest balance. That would save time. It would also skip the job you bought it for.",
         "why": "Initial sync builds a checked view of the chain. In the live game, it takes time and resources; this preview only simulates completion.",
         "next": "Install the node software from a checked source and let verification complete."
       },
       {
         "title": "Your witness is working",
-        "speaker": "FreeBill · network handover",
-        "scene": "The demo sync finishes. Dennis asks whether the node can now sign the payment. The signing device is still sitting at the other end of the bench.",
+        "speaker": "claude1337 · network handover",
+        "scene": "The demo sync finishes. grok69420 asks whether the node can now sign the payment. The signing device is still sitting at the other end of the bench.",
         "why": "The node checks chain data. The signer authorises spending. Keeping those roles distinct helps you see which dependency you are changing when you connect a client to your own node.",
         "next": "Pair a compatible client with your node and keep the signing and recovery plan separate."
       }
@@ -192,43 +192,43 @@
     "lightning": [
       {
         "title": "The node gets another job",
-        "speaker": "FreeBill · network rack",
-        "scene": "Dennis asks whether the computer can check Bitcoin and handle payments. It can support both jobs, but the payment service will need its own wallet.",
+        "speaker": "claude1337 · network rack",
+        "scene": "grok69420 asks whether the computer can check Bitcoin and handle payments. It can support both jobs, but the payment service will need its own wallet.",
         "why": "The Bitcoin node checks the chain. Lightning adds an online payment system with channel funds and operational responsibilities.",
         "next": "Commission a Bitcoin node first. This concept runs Lightning on that computer, without another hardware purchase."
       },
       {
         "title": "Software with spending responsibilities",
-        "speaker": "FreeBill · service setup",
+        "speaker": "claude1337 · service setup",
         "scene": "The computer stays connected. Lightning needs to communicate with peers and respond to channel activity; this is a different job from the offline signer.",
         "why": "You are adding software that uses wallet keys online. Its permissions, updates, availability and implementation matter.",
         "next": "Configure the demo Lightning service and its Bitcoin backend. Keep cold-reserve secrets on their separate signer."
       },
       {
         "title": "A wallet that stays awake",
-        "speaker": "Dennis · wallet desk",
-        "scene": "Dennis suggests moving the cold wallet onto the node to save time. You give Lightning a separate wallet instead.",
+        "speaker": "grok69420 · wallet desk",
+        "scene": "grok69420 suggests moving the cold wallet onto the node to save time. You give Lightning a separate wallet instead.",
         "why": "Lightning uses online keys. Decide how much bitcoin to expose to that working wallet; the reserve is a separate decision.",
         "next": "Create a demonstration Lightning wallet. This preview generates no real key and moves no bitcoin."
       },
       {
         "title": "The seed is part of the recovery plan",
-        "speaker": "FreeBill · recovery desk",
-        "scene": "You record the wallet recovery material. Dennis starts packing up. There is still channel recovery to consider.",
+        "speaker": "claude1337 · recovery desk",
+        "scene": "You record the wallet recovery material. grok69420 starts packing up. There is still channel recovery to consider.",
         "why": "The Lightning wallet and its channels have different recovery needs. This concept follows an LND-style setup; a wallet seed alone is not the whole plan.",
         "next": "Record the wallet recovery material, then prepare the channel recovery process."
       },
       {
         "title": "Keep the channel recovery route current",
-        "speaker": "FreeBill · channel desk",
+        "speaker": "claude1337 · channel desk",
         "scene": "A channel is an ongoing relationship with another node. Its recovery information needs to survive a failed disk, not just a forgotten password.",
         "why": "LND static channel backups help recover funds by closing channels with peer cooperation. They do not resume the channel where it stopped; recovery can take time.",
         "next": "Plan off-device channel-backup updates as channels change. No channel or backup file exists yet in this demonstration."
       },
       {
         "title": "Ready to plan a channel, not funded yet",
-        "speaker": "FreeBill · payments desk",
-        "scene": "The software and recovery plan are prepared. Dennis asks where the incoming payments are. You have not opened or funded a channel yet.",
+        "speaker": "claude1337 · payments desk",
+        "scene": "The software and recovery plan are prepared. grok69420 asks where the incoming payments are. You have not opened or funded a channel yet.",
         "why": "Outbound liquidity supports sending; inbound liquidity supports receiving. Opening a channel involves bitcoin, fees and a peer, and does not guarantee routing income.",
         "next": "The next step is to choose a peer, a working balance and liquidity needs. Channel opening is a later part of this concept; current channels and liquidity remain zero."
       }
@@ -238,15 +238,15 @@
     "Home": {
       "storage": {
         "title": "Two copies, one fire",
-        "speaker": "FreeBill · storage desk",
-        "scene": "You put the recovery copy beside the signer. Dennis calls this “double security”. FreeBill draws one circle around the desk: one incident can still reach both.",
+        "speaker": "claude1337 · storage desk",
+        "scene": "You put the recovery copy beside the signer. grok69420 calls this “double security”. claude1337 draws one circle around the desk: one incident can still reach both.",
         "why": "Copies at the same site can share a disaster. Separate storage changes that risk, while adding travel, access and possibly another person to the plan. Another copy of this key remains the same signing authority.",
         "next": "Choose a location deliberately, then assign the key to the wallet’s spending rule."
       },
       "handover": {
         "title": "Make the plan outlive the afternoon",
-        "speaker": "FreeBill · handover",
-        "scene": "The wallet is assigned. Dennis starts making a CERTIFIED IMPOSSIBLE TO LOSE label. You ask him to leave room for the date of the next recovery rehearsal.",
+        "speaker": "claude1337 · handover",
+        "scene": "The wallet is assigned. grok69420 starts making a CERTIFIED IMPOSSIBLE TO LOSE label. You ask him to leave room for the date of the next recovery rehearsal.",
         "why": "This wallet uses one key. Its recovery copy can restore that authority, but recording a copy has not demonstrated that you can recover from it. People forget procedures; software and circumstances change.",
         "next": "The wallet is assigned. Device and copy may still share a site, or their separation remains unconfirmed. Review the storage plan before the planned recovery rehearsal."
       }
@@ -254,31 +254,31 @@
     "Off-site storage": {
       "storage": {
         "title": "A second place, a new responsibility",
-        "speaker": "FreeBill · storage desk",
-        "scene": "The copy now has its own address. One accident at the workbench has less reach. Dennis asks whether you remembered how to get back into the storage location.",
+        "speaker": "claude1337 · storage desk",
+        "scene": "The copy now has its own address. One accident at the workbench has less reach. grok69420 asks whether you remembered how to get back into the storage location.",
         "why": "Separation reduces a shared-site failure. You still need to control access and be able to retrieve the material. Distance helps only if the recovery route stays usable.",
         "next": "Review the site counts: several backups at that second address still share one incident. Then assign the key to the wallet."
       },
       "handover": {
         "title": "Make the plan outlive the afternoon",
-        "speaker": "FreeBill · handover",
-        "scene": "The wallet is assigned. Dennis starts making a CERTIFIED IMPOSSIBLE TO LOSE label. You ask him to leave room for the date of the next recovery rehearsal.",
+        "speaker": "claude1337 · handover",
+        "scene": "The wallet is assigned. grok69420 starts making a CERTIFIED IMPOSSIBLE TO LOSE label. You ask him to leave room for the date of the next recovery rehearsal.",
         "why": "This wallet uses one key. Its recovery copy can restore that authority, but recording a copy has not demonstrated that you can recover from it. People forget procedures; software and circumstances change.",
         "next": "The next chapter is a recovery rehearsal. That exercise is planned for the game; this concept has only recorded the setup."
       }
     },
     "Trusted person": {
       "storage": {
-        "title": "Dennis discovers what the words can do",
-        "speaker": "FreeBill · trust desk",
-        "scene": "Dennis thought he was looking after a very dull envelope. Then he learns what Bitcoin is. Most friendships survive this discovery. The game leaves a very small chance that yours does not.",
+        "title": "grok69420 discovers what the words can do",
+        "speaker": "claude1337 · trust desk",
+        "scene": "grok69420 thought he was looking after a very dull envelope. Then he learns what Bitcoin is. Most friendships survive this discovery. The game leaves a very small chance that yours does not.",
         "why": "A readable seed can be copied while the envelope stays exactly where you left it. Paper and steel both reveal the same secret. In the game, betrayal at a friend’s house has the same 0.06% monthly baseline as flooding there. One key can spend a single-key wallet; a multisig attacker needs enough distinct keys to meet its rule.",
         "next": "Review who can read the recovery material. A bank deposit box has no friend-access roll. If a secret is copied, rotate the key and move the funds; collecting the envelope cannot revoke another copy."
       },
       "handover": {
         "title": "Make the plan outlive the afternoon",
-        "speaker": "FreeBill · handover",
-        "scene": "The wallet is assigned. Dennis starts making a CERTIFIED IMPOSSIBLE TO LOSE label. You ask him to leave room for the date of the next recovery rehearsal.",
+        "speaker": "claude1337 · handover",
+        "scene": "The wallet is assigned. grok69420 starts making a CERTIFIED IMPOSSIBLE TO LOSE label. You ask him to leave room for the date of the next recovery rehearsal.",
         "why": "This wallet uses one key. Its recovery copy can restore that authority, but recording a copy has not demonstrated that you can recover from it. People forget procedures; software and circumstances change.",
         "next": "The wallet is assigned. Review the trusted person’s access and storage arrangements before the planned recovery rehearsal."
       }

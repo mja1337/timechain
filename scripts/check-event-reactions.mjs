@@ -14,7 +14,7 @@ assert.deepEqual(Object.keys(reactions).sort(),Array.from(events,event=>event.id
 for(const event of events){
   const pair=reactions[event.id];assert.equal(pair.length,2);assert(pair.every(text=>typeof text==='string'&&text.trim().length>20),event.id);
   assert.notEqual(pair[0],pair[1],event.id);
-  const markup=context.eventReactionsHtml(event);assert.equal((markup.match(/class="perspective-trigger"/g)||[]).length,3);assert.equal((markup.match(/popover="auto"/g)||[]).length,3);assert.equal((markup.match(/aria-expanded="false"/g)||[]).length,3);assert(!markup.includes('<blockquote'));assert(!markup.includes('Dennis'));assert(!markup.includes('FreeBob'));assert(practical[event.id].length>100,event.id);
+  const markup=context.eventReactionsHtml(event);assert.equal((markup.match(/class="perspective-trigger"/g)||[]).length,3);assert.equal((markup.match(/popover="auto"/g)||[]).length,3);assert.equal((markup.match(/aria-expanded="false"/g)||[]).length,3);assert(!markup.includes('<blockquote'));assert(!markup.includes('grok69420'));assert(!markup.includes('FreeBob'));assert(practical[event.id].length>100,event.id);
   const sidebar=context.eventReactionsHtml(event,true);const ids=Array.from((markup+sidebar).matchAll(/<aside id="([^"]+)"/g),match=>match[1]);assert.equal(new Set(ids).size,6,'Sidebar and modal IDs must not collide');
 }
 reactions.genesis[0]='<script>unexpected()</script>';

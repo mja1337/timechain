@@ -329,6 +329,24 @@ function buyNode(level){
   if(state.cash<costs[level])return showToast("Not enough cash",`Node setup costs ${fmtUsd(costs[level])}.`);
   state.cash-=costs[level];state.node=level;log(level===1?"Dedicated full node online":"Hardened node online",`-${fmtUsd(costs[level])}`);showToast(level===1?"Continuous verification":"Hardened node online",level===1?"The dedicated node keeps validating when the mining fleet is manually powered down.":"Higher-throughput synchronization and relay profiles are now available.");save();render();
 }
+function phoneSecurity(){state.phone=Object.assign({owned:false,twoFA:{exchange:false,pool:false},upgrade:false},state.phone||{});state.phone.twoFA=Object.assign({exchange:false,pool:false},state.phone.twoFA||{});return state.phone}
+function buyPhone(){
+  const phone=phoneSecurity();if(phone.owned)return;
+  const cost=120;if(state.cash<cost)return showToast("Not enough cash","A basic phone and a working number cost $120 in this model.");
+  state.cash-=cost;phone.owned=true;log("Mobile phone added","A phone can receive fresh email 2FA codes for exchange and pool accounts","custody");showToast("Phone added","This phone is now an operation asset. Keep it separate from the mining laptop where practical.","info","custody");save();render();
+}
+function toggleAccountTwoFA(account){
+  const phone=phoneSecurity();
+  if(!["exchange","pool"].includes(account)||phone.upgrade)return;
+  if(!phone.owned)return showToast("Phone required","Buy the mobile phone asset before enabling email 2FA.","blocked","market");
+  phone.twoFA[account]=!phone.twoFA[account];log(`${account==="pool"?"Mining pool":"Exchange"} email 2FA ${phone.twoFA[account]?"enabled":"disabled"}`,phone.twoFA[account]?"A fresh code is required for this account action":"The account no longer asks for the phone code","custody");save();render();
+}
+function upgradeAccountSecurity(){
+  const phone=phoneSecurity();if(phone.upgrade)return;
+  if(!phone.owned)return showToast("Phone required","The long-term account security upgrade builds on the mobile phone asset.","blocked","market");
+  const cost=600;if(state.cash<cost)return showToast("Not enough cash","The long-term account security upgrade costs $600.");
+  state.cash-=cost;phone.upgrade=true;phone.twoFA.exchange=true;phone.twoFA.pool=true;log("Account security upgraded","Exchange and pool sign-ins now use a persistent device-backed approval policy","custody");showToast("Long-term account security enabled","Exchange and pool accounts now share the upgraded device approval policy.","milestone","custody");save();render();
+}
 function buyBackupNode(){
   if(state.backupNode.enabled||state.node<1||state.time<at(BACKUP_NODE.date))return;
   if(state.cash<BACKUP_NODE.cost)return showToast("Not enough cash",`${BACKUP_NODE.name} setup costs ${fmtUsd(BACKUP_NODE.cost)}.`);
@@ -358,11 +376,33 @@ function rollDie(){
   state.walletSetup.rolls.push(secureDice(1)[0]);
   save();render();
 }
+function recordDieRoll(value){
+  const w=state.walletSetup;
+  const face=Math.floor(Number(value));
+  if(w.done||w.step!==1||w.diceRolling||!Number.isInteger(face)||face<1||face>6)return;
+  w.diceRolling=true;w.diceFace=face;render();
+  setTimeout(()=>{
+    if(state.walletSetup!==w||w.done||w.step!==1)return;
+    w.rolls.push(face);w.diceRolling=false;save();render();
+  },850);
+}
 function finishRolling(){
   if(state.walletSetup.done||state.walletSetup.rolls.length<8)return;
   secureDice(99-state.walletSetup.rolls.length).forEach(r=>state.walletSetup.rolls.push(r));
   state.walletSetup.step=2;state.walletSetup.keyHex=deriveWalletKeyHex(state.walletSetup.rolls);
   save();render();
+}
+function recordWalletPaper(){
+  if(state.walletSetup.step!==2||!state.walletSetup.rolls.length)return;
+  state.walletSetup.paperRecorded=true;save();render();
+}
+function destroyWalletPaper(){
+  if(state.walletSetup.step!==2||!state.walletSetup.paperRecorded)return;
+  state.walletSetup.paperDestroyed=true;state.walletSetup.step=3;save();render();
+}
+function takeWalletOath(){
+  if(state.walletSetup.step!==3||!state.walletSetup.paperDestroyed)return;
+  state.walletSetup.oath=true;completeWalletSetup(false);
 }
 function skipWalletSetup(){
   if(state.walletSetup.done)return;
