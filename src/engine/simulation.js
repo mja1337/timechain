@@ -266,7 +266,7 @@ function claims(){return state.wallets.mtgox+state.wallets.bitfinex+state.wallet
 function totalBtc(){return controlled()+claims()+(typeof coldInFlightBtc==="function"?coldInFlightBtc()+securedPledgedBtc():0)}
 function marketLiquidBtc(){return state.wallets.hot+["mtgox","bitfinex","quadriga","frontier","exchange"].reduce((sum,id)=>sum+(venueAvailable(id)&&!venueFrozen(id)?state.wallets[id]:0),0)}
 function equityValue(){return STRATEGY_SECURITIES.reduce((sum,s)=>sum+strategyValue(s.id),0)}
-function netWorth(){return state.cash-state.debt-(state.projectLoan||0)-(typeof securedPrincipal==="function"?securedPrincipal():0)+(state.time>=MARKET?totalBtc()+state.wallets.etf+lightningLocked():0)*priceAt(state.time)+equityValue()+fleet().value*.3}
+function netWorth(){return state.cash+(state.tour&&Number(state.tour.escrow)||0)-state.debt-(state.projectLoan||0)-(typeof securedPrincipal==="function"?securedPrincipal():0)+(state.time>=MARKET?totalBtc()+state.wallets.etf+lightningLocked():0)*priceAt(state.time)+equityValue()+fleet().value*.3}
 function nextRand(){state.rng=(state.rng*1664525+1013904223)>>>0;return state.rng/4294967296}
 function poisson(lambda){
   if(lambda<=0)return 0;if(lambda>30)return Math.max(0,Math.round(lambda+Math.sqrt(lambda)*(nextRand()+nextRand()+nextRand()+nextRand()+nextRand()+nextRand()-3)*1.4));

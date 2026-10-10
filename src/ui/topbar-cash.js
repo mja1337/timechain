@@ -21,6 +21,8 @@ function topbarCashState(forecast=settlementForecast()){
   if(cash<0)return{tone:"is-alert",note:`Overdrawn ${fmtCompactUsd(Math.abs(cash))}`};
   if(debt>0)return{tone:"is-alert",note:`Arrears ${fmtCompactUsd(debt)} owed`};
   if(forecast.cashAfter<0)return{tone:"is-warn",note:`Short ${fmtCompactUsd(Math.abs(forecast.cashAfter))} for bill`};
+  // The tutorial's hold for the signer is the player's money, set aside: say so rather than let it look spent.
+  if(typeof tourEscrow==="function"&&tourEscrow()>0)return{tone:"",note:`+${fmtCompactUsd(tourEscrow())} held for signer`};
   return{tone:"",note:`Next bill ${fmtCompactUsd(forecast.estimated)} · ${forecast.days} d`};
 }
 function topbarCashHtml(forecast){

@@ -39,7 +39,7 @@ function coldSetupSteps(){
       ?"A signer approves transactions using a private key. In this early era, buy a Basic PC and keep it off the network. Separating that job from the mining laptop limits what malware on the laptop can reach. The new computer can still fail, so prepare recovery before relying on it."
       :"A signer uses a private key to approve transactions. A separate device keeps that secret away from the everyday mining computer. It helps contain a compromise, but you still need to check what you approve and plan for the signer failing.",
     action:waiting?`<span class="label">Ordered · arrives in ${Math.max(1,Math.ceil((waiting.due-state.time)/DAY))} days</span>`
-      :cheapest?`<button class="action small primary" data-action="custody-buy" data-id="${cheapest.id}"${state.cash<custodyUnitCost(cheapest)?" disabled":""}>${cheapest.acquire?`${custodyAcquireLabel(cheapest)} · ${custodyLeadDays(cheapest)}d`:`Order ${cheapest.name} · ${custodyUnitCost(cheapest)>0?fmtUsd(custodyUnitCost(cheapest)):"free"}${custodyLeadDays(cheapest)?` · ${custodyLeadDays(cheapest)}d`:""}`}</button>`:""
+      :cheapest?`<button class="action small primary" data-action="custody-buy" data-id="${cheapest.id}"${custodyCash(cheapest)<custodyUnitCost(cheapest)?" disabled":""}>${cheapest.acquire?`${custodyAcquireLabel(cheapest)} · ${custodyLeadDays(cheapest)}d`:`Order ${cheapest.name} · ${custodyUnitCost(cheapest)>0?fmtUsd(custodyUnitCost(cheapest)):"free"}${custodyLeadDays(cheapest)?` · ${custodyLeadDays(cheapest)}d`:""}`}</button>`:""
   });
   // 2. A key made on it
   steps.push({
