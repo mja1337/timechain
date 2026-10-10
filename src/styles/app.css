@@ -684,3 +684,13 @@ a.coin{text-decoration:none;cursor:pointer;transition:border-color .12s,backgrou
 .energy-model-chart{margin-top:0}
 .exposure-strip .chart-key{margin:0;font-size:10px}
 @media(max-width:800px){.chart-key{gap:6px 14px}.chart-key-meta{margin-left:0;flex-basis:100%}.chart-key-list{grid-template-columns:1fr}.chart-key-list .chart-key-meta{flex-basis:auto}}
+/* Topbar cash (src/ui/topbar-cash.js): sticky on every tab, fixed-width tabular figures. */
+.topbar-cash{display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding:0 12px;width:152px;box-sizing:border-box;border-left:1px solid var(--line);border-right:1px solid var(--line);font-family:var(--mono);flex-shrink:0}
+.topbar-cash-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;line-height:1}
+.topbar-cash strong{display:block;font-size:15px;line-height:1.1;color:var(--green);font-variant-numeric:tabular-nums;white-space:nowrap;min-width:11ch;text-align:right}
+.topbar-cash small{font-size:9px;color:var(--dim);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;line-height:1}
+.topbar-cash .cash-compact{display:none}
+.topbar-cash.is-warn strong,.topbar-cash.is-warn small{color:var(--orange2)}
+.topbar-cash.is-alert strong,.topbar-cash.is-alert small{color:var(--red)}
+@media(max-width:800px){.topbar-cash{margin-left:auto;padding:0;border:0;height:42px;width:auto;justify-content:center}.topbar-cash .cash-full,.topbar-cash small{display:none}.topbar-cash .cash-compact{display:inline}.topbar-cash strong{font-size:13px;min-width:7ch}.topbar-cash~.clock{margin-left:0}}
+@media(max-width:480px){.brand-name{display:none}}

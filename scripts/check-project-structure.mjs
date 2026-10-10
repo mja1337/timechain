@@ -59,6 +59,7 @@ const expectedScripts = [
   "src/ui/presentation.js",
   "src/ui/art.js",
   "src/ui/disaster-art.js",
+  "src/ui/topbar-cash.js",
   "src/ui/tabs/dashboard.js",
   "src/ui/tabs/pools.js",
   "src/ui/tabs/mine.js",

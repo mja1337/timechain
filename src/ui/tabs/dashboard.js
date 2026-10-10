@@ -10,6 +10,7 @@ function renderHeader(){
   return `<header class="topbar">
     <div class="brand"><a class="coin" href="https://bitcoin.org/bitcoin.pdf" target="_blank" rel="noopener noreferrer" title="Read the Bitcoin whitepaper (opens in a new tab)" aria-label="Read the Bitcoin whitepaper (opens in a new tab)">₿</a><div><div class="brand-name">TIMECHAIN</div><div class="brand-sub">${APP_RELEASE} · seed ${state.seed}</div></div></div>
     <div class="era-chip"><strong>${eraAt(state.time)}</strong></div>
+    ${topbarCashHtml(forecast)}
     <div class="clock"><strong id="live-date">${dateFmt(state.time)}</strong><span id="live-block">BLOCK ~${fmtNum(approxHeight(state.time))}</span></div>
     <div class="xp-meter" title="Operator level - earned from difficulty-1 shares found (submitted to your pool when pool mining), new best-share records, machines deployed and repairs completed"><div class="xp-meter-top"><b id="live-xp-level">LV ${xpProgress().level}</b><span id="live-xp-remaining">${fmtNum(Math.ceil(xpProgress().remaining))} XP to go</span></div><div class="xp-track"><i id="live-xp-fill" style="width:${xpProgress().percent.toFixed(1)}%"></i></div><span class="xp-best" id="live-xp-best">Best share ${state.xp.bestDifficulty?fmtDifficulty(state.xp.bestDifficulty):"-"}</span></div>
     <div class="speeds" aria-label="Simulation speed">${speedButtons}</div>
