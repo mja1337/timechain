@@ -1,0 +1,132 @@
+# Weekly history refresh: appends the newest recorded days to historical-data.js and opens (or
+# updates) one pull request on data/weekly-refresh for a person to review. It never merges and
+# never touches main. Objectives, guardrails and the review checklist: docs/data-refresh.md.
+name: Weekly data refresh
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"  # Mondays 07:00 UTC
+  workflow_dispatch:
+    inputs:
+      end:
+        description: "Cut-off date, YYYY-MM-DD. Blank: the latest complete UTC day both sources have."
+        required: false
+        default: ""
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: data-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh and open PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write       # push the data/weekly-refresh branch
+      pull-requests: write  # open or update the PR and label it
+      actions: write        # dispatch the Checks workflow on the branch
+    env:
+      BRANCH: data/weekly-refresh
+      LABEL: data-refresh
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Refresh the data
+        id: refresh
+        env:
+          DATA_REFRESH_END: ${{ inputs.end }}
+        run: node scripts/data-refresh.mjs
+
+      - name: Nothing new
+        if: steps.refresh.outputs.changed != 'true'
+        env:
+          OLD_END: ${{ steps.refresh.outputs.old_end }}
+        run: echo "::notice::The data already runs through $OLD_END. No PR."
+
+      - name: Run the checks and the guardrails
+        id: checks
+        if: steps.refresh.outputs.changed == 'true'
+        env:
+          DATA_REFRESH_BASE: origin/main
+        run: |
+          git switch -C "$BRANCH"
+          : > "$RUNNER_TEMP/checks.tsv"
+          for check in check-project-structure check-historical-data check-conference-stories \
+                       check-event-reactions check-event-sources check-notification-volume \
+                       check-ui-contracts check-engine-behaviour; do
+            echo "::group::$check"
+            if node "scripts/$check.mjs"; then status=pass; else status=fail; fi
+            echo "::endgroup::"
+            printf '%s\t%s\n' "$check" "$status" >> "$RUNNER_TEMP/checks.tsv"
+          done
+          if git diff --check; then status=pass; else status=fail; fi
+          printf '%s\t%s\n' "git diff --check" "$status" >> "$RUNNER_TEMP/checks.tsv"
+          guard=pass
+          node scripts/check-data-refresh.mjs --mode=data-refresh --json="$RUNNER_TEMP/guard.json" || guard=fail
+          cat "$RUNNER_TEMP/checks.tsv"
+          if [ "$guard" = pass ] && ! grep -q $'\tfail$' "$RUNNER_TEMP/checks.tsv"; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push the branch
+        if: steps.refresh.outputs.changed == 'true'
+        env:
+          NEW_END: ${{ steps.refresh.outputs.new_end }}
+          OLD_END: ${{ steps.refresh.outputs.old_end }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add historical-data.js scripts/build-historical-data.mjs src/config/timeline.js
+          git commit -m "Data: recorded history through $NEW_END" -m "Appended $OLD_END..$NEW_END from Coin Metrics and mempool.space by the weekly data refresh."
+          # The bot owns this branch and rebuilds it from main every run.
+          git push --force origin "HEAD:refs/heads/$BRANCH"
+
+      - name: Open or update the PR
+        if: steps.refresh.outputs.changed == 'true'
+        env:
+          NEW_END: ${{ steps.refresh.outputs.new_end }}
+          OK: ${{ steps.checks.outputs.ok }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node scripts/data-refresh.mjs --pr-body --guard="$RUNNER_TEMP/guard.json" \
+            --checks="$RUNNER_TEMP/checks.tsv" --run-url="$RUN_URL" > "$RUNNER_TEMP/body.md"
+          title="Data refresh: recorded history through $NEW_END"
+          [ "$OK" = true ] || title="$title (checks failed, do not merge)"
+          number="$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number')"
+          if [ -n "$number" ]; then
+            gh pr edit "$number" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+            number="$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number')"
+          fi
+          if ! gh pr edit "$number" --add-label "$LABEL"; then
+            echo "::error::Could not add the '$LABEL' label to PR #$number. Create the label in the repository (Issues > Labels)."
+            exit 1
+          fi
+          echo "::notice::PR #$number: $title"
+
+      - name: Run Checks on the branch
+        if: steps.refresh.outputs.changed == 'true'
+        run: gh workflow run checks.yml --ref "$BRANCH"
+
+      - name: Fail the run when a check failed
+        if: steps.refresh.outputs.changed == 'true' && steps.checks.outputs.ok != 'true'
+        run: |
+          echo "::error::A check or guardrail failed; the PR says which. Do not merge it."
+          exit 1
