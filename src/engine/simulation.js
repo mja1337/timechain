@@ -11,7 +11,7 @@ function startingModeForCash(cash){return null}
 const initialState=()=>{const seed=Math.floor(Math.random()*4294967296);return{
   version:1,time:START,speed:0,returnSpeed:1,started:false,ended:false,seed,rng:seed,lastReal:Date.now(),
   cash:STARTING_LIQUIDITY_DEFAULT,startingCash:STARTING_LIQUIDITY_DEFAULT,difficulty:"medium",campaignStart:START,debt:0,bill:0,billLedger:{energy:0,rent:0,internet:0,staff:0,insurance:0,nodeNetwork:0,other:0},lastMonth:new Date(START).toISOString().slice(0,7),power:true,policyLock:null,
-  wallets:{hot:0,cold:0,mtgox:0,bitfinex:0,quadriga:0,frontier:0,exchange:0,etf:0,frozen:0},
+  wallets:{hot:0,cold:0,mtgox:0,bitfinex:0,quadriga:0,frontier:0,exchange:0,etf:0,frozen:0},phone:{owned:false,twoFA:{exchange:false,pool:false},upgrade:false},
   lightning:{locked:0,earned:0},
   giftCards:{spentBtc:0,spentUsd:0,cards:0},floorView:"3d",
   hardware:{laptop:1},poweredDownHardware:{},facility:"home",region:"na",thermal:{temperature:22,orders:[],equipment:{}},overdrive:false,settlementSaleMode:false,autoRepair:false,node:0,nodeStorage:50,nodePruned:false,nodeMode:"archival",nodeSync:{primaryLag:0,primaryPeak:0,backupLag:0,backupPeak:0},backupNode:{enabled:false,outageUntil:0},mode:"solo",pool:"f2pool",
@@ -25,6 +25,7 @@ const initialState=()=>{const seed=Math.floor(Math.random()*4294967296);return{
 }};
 let state,loadedHasHardwareAlerts=false,loadedHasHardwareToastSeen=false,activeTab="dashboard",mobileMenuOpen=false,mobileMenuSection="play",activityFilter="all",activityLimit=100,tradePercentages={},hardwarePurchaseChoice={},custodyLesson="malware",selectedVenue="mtgox",introDifficulty="medium",introStartingCash=STARTING_LIQUIDITY_DEFAULT,pendingTransaction=null,toast=null,toastTimer=null,timer=null,faucet=null,faucetTimer=null,mempoolTimer=null,introStep=0;
 {const stored=loadStoredSave();state=initialState();if(stored){loadedHasHardwareAlerts=!!stored.hardwareAlerts;loadedHasHardwareToastSeen=!!stored.hardwareToastSeen;state=Object.assign(state,stored)}}
+state.walletSetup=Object.assign({done:false,step:0,rolls:[],keyHex:"",paperRecorded:false,paperDestroyed:false,oath:false},state.walletSetup||{});
 const ACTIVITY_CATEGORIES=["trade","fleet","finance","reward","custody","learning","operations","milestone"];
 function activityCategory(text=""){
   if(/bought|sold|treasury policy|ETF exposure|strategy/i.test(text))return"trade";
@@ -62,6 +63,7 @@ state.difficulty=savedStartingMode?.id||"medium";state.campaignStart=Math.max(ST
 if(!state.started){introDifficulty="medium";introStartingCash=clampStartingLiquidity(state.startingCash);const mode=startingMode(introDifficulty);state.cash=introStartingCash;state.startingCash=introStartingCash;state.time=mode.start;state.campaignStart=mode.start;state.lastMonth=new Date(mode.start).toISOString().slice(0,7);state.difficulty=mode.id}
 state.lightning=Object.assign({locked:0,earned:0},state.lightning||{});
 state.wallets=Object.assign({hot:0,cold:0,mtgox:0,bitfinex:0,quadriga:0,frontier:0,exchange:0,etf:0,frozen:0},state.wallets||{});
+state.phone=Object.assign({owned:false,twoFA:{exchange:false,pool:false},upgrade:false},state.phone||{});state.phone.owned=!!state.phone.owned;state.phone.upgrade=!!state.phone.upgrade;state.phone.twoFA=Object.assign({exchange:false,pool:false},state.phone.twoFA||{});state.phone.twoFA.exchange=!!state.phone.twoFA.exchange;state.phone.twoFA.pool=!!state.phone.twoFA.pool;
 state.speculations=Array.isArray(state.speculations)?state.speculations:[];
 state.completedLearning=Array.isArray(state.completedLearning)?state.completedLearning:[];
 state.knowledge=Number.isFinite(Number(state.knowledge))?Number(state.knowledge):0;

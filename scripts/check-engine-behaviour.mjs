@@ -1747,21 +1747,62 @@ rule("fetching the reserve restarts the clock and the coins land inside the grac
   assert(r.inTime && !r.gridCut, "the coins landed after the grace month had already ended");
 });
 
-rule("fetching the reserve is refused when it cannot work, and says why", () => {
+rule("fetching the reserve explains hard stops and can clear an earlier arrear", () => {
   const r = json(`(()=>{
     ${CUSTODY_SITE(`state.time=at("2017-01-01");state.hardware={s9:100};state.cash=0;state.speed=1;`)}
     ${CONFIGURED_WALLET("single")}
     state.wallets.hot=0;state.wallets.cold=40;
     for(let n=0;n<120&&!state.pendingSettlement;n++)tick(true);
-    state.debt=500;const arrears=fetchReserveBlockReason();state.debt=0;
+    const noArrearsNeed=reservePlan(false).need;
+    state.debt=500;const arrears=fetchReserveBlockReason(),arrearsPlan=reservePlan(false);
     state.wallets.cold=0;const empty=fetchReserveBlockReason();state.wallets.cold=40;
     const keys=state.custody.assigned;state.custody.assigned=[];const unsigned=fetchReserveBlockReason();
-    state.custody.assigned=keys;
-    return{arrears,empty,unsigned,ok:fetchReserveBlockReason()};})()`);
-  assert(/arrears/i.test(r.arrears), `a second missed bill was allowed: "${r.arrears}"`);
+    state.custody.assigned=keys;const ok=fetchReserveBlockReason(),debtBefore=state.debt;fetchReserve(false);
+    const recovered={pending:!!state.pendingSettlement,debt:state.debt,jobs:state.coldSpends.length,cold:state.wallets.cold};
+    return{arrears,noArrearsNeed,arrearsPlan,empty,unsigned,ok,debtBefore,recovered};})()`);
+  assert(r.arrears === "" && r.arrearsPlan.need > r.noArrearsNeed, "an earlier arrear did not increase the reserve needed to recover");
   assert(/cold storage/i.test(r.empty), `an empty reserve was offered: "${r.empty}"`);
   assert(/cannot sign/i.test(r.unsigned), `a wallet that cannot sign was offered: "${r.unsigned}"`);
   assert(r.ok === "", `a valid reserve was refused: "${r.ok}"`);
+  assert(!r.recovered.pending && r.recovered.jobs === 1 && r.recovered.debt > r.debtBefore,
+    "a cold-only operation with arrears could not start a reserve rescue");
+});
+
+rule("a cold-only operation can fetch, sell and clear arrears after the grid is cut", () => {
+  const r = json(`(()=>{
+    ${CUSTODY_SITE(`state.time=at("2040-06-01");state.sandbox=true;state.hardware={s19:100};state.cash=0;state.speed=1;`)}
+    ${CONFIGURED_WALLET("single")}
+    state.wallets.hot=0;state.wallets.cold=400;
+    for(let n=0;n<120&&!state.pendingSettlement;n++)tick(true);
+    const before={pending:!!state.pendingSettlement,cold:state.wallets.cold};
+    state.debt=500;state.arrearsDue=state.time-DAY;state.gridCutAnnounced=true;state.power=false;
+    fetchReserve(false);
+    let ticks=0;while(state.coldSpends.length&&ticks<40){tick(true);ticks++}
+    const landed={hot:state.wallets.hot,cold:state.wallets.cold,debt:state.debt,pending:!!state.pendingSettlement};
+    const proceeds=state.wallets.hot*priceAt(state.time)*(1-RESERVE_FEE);state.cash+=proceeds;state.wallets.hot=0;
+    payDebt();
+    return{before,landed,ticks,after:{cash:state.cash,debt:state.debt,power:state.power,cut:gridCutOff(),cold:state.wallets.cold}};})()`);
+  assert(r.before.pending, "the 2040 stress state did not reach a settlement pause");
+  assert(r.landed.hot>0 && r.landed.cold<r.before.cold && !r.landed.pending,
+    "the reserve did not arrive from the cold-only 2040 operation");
+  assert(r.ticks>0 && r.after.debt===0 && r.after.power && !r.after.cut,
+    "selling the fetched reserve did not clear arrears and restore service");
+});
+
+rule("an insufficient cold reserve remains recoverable instead of stranding the settlement", () => {
+  const r = json(`(()=>{
+    ${CUSTODY_SITE(`state.time=at("2017-01-01");state.hardware={s9:100};state.cash=0;state.speed=1;`)}
+    ${CONFIGURED_WALLET("single")}
+    state.wallets.hot=0;state.wallets.cold=.01;
+    for(let n=0;n<120&&!state.pendingSettlement;n++)tick(true);
+    state.debt=500;const plan=reservePlan(false);fetchReserve(false);
+    const started={covers:plan.covers,jobs:state.coldSpends.length,pending:!!state.pendingSettlement,debt:state.debt,cold:state.wallets.cold};
+    let ticks=0;while(state.coldSpends.length&&ticks<40){tick(true);ticks++}
+    return{started,ticks,hot:state.wallets.hot,cold:state.wallets.cold,debt:state.debt,pending:!!state.pendingSettlement};})()`);
+  assert(!r.started.covers && r.started.jobs===1 && !r.started.pending,
+    "an insufficient reserve did not enter its explicit rescue path");
+  assert(r.ticks>0 && r.hot>0 && r.cold===0 && r.debt>500,
+    "an insufficient reserve was lost, stalled, or failed to preserve the remaining debt");
 });
 
 rule("a save from before the coin count still opens, and its reserve is not free to spend", () => {

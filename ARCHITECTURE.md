@@ -57,6 +57,7 @@
 - `src/ui/presentation.js` - formatting, charts and reusable visual helpers.
 - `src/ui/tabs/` - base tab markup split into Dashboard, Mine, Ledger, Market, operations and Method ownership.
 - `src/ui/enhance/` - post-render visuals split into Mine/Market, custody and operating-system ownership.
+- `src/ui/custody-map/state.js` - the derived custody view model shared by the future Three.js map, its accessible fallback and its detail panel. It separates money location, spending approval and network verification without creating another game-state store.
 - `src/ui/live.js` - the cheap per-tick DOM patches for the header, charts and live tab panels; presentation rather than simulation.
 - `src/ui/render.js` - modal, sidebar and application-shell rendering.
 - `src/app/events.js` - delegated DOM events.

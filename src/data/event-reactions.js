@@ -1,7 +1,7 @@
 "use strict";
 
 /* Fictional, contemporaneous opinions, never testimony or historical sources.
-   Dennis favours experiments and access. FreeBob asks what authority, dependency
+   grok69420 favours experiments and access. FreeBob asks what authority, dependency
    or obligation the experiment creates. Neither gets advance knowledge of events. */
 const EVENT_REACTIONS={
   conferenceprague11:["Go and meet the people building it. A conversation can turn a forum idea into something that actually works. Imagine finding someone who has already fixed your client's connection problem: ten minutes comparing notes could save you another evening guessing alone.","Useful, provided meeting the developer does not become our security review. A name badge is very easy to acquire. If a new contact offers you a wallet download, take down the project's name and check its source yourself when you get home."],

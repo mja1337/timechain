@@ -1,6 +1,7 @@
 "use strict";
 
 function eventModal(){
+  if(typeof uiConfigAllows==="function"&&!uiConfigAllows("popups"))return"";
   const e=EVENTS.find(x=>x.id===state.activeEvent);if(!e)return"";
   const eventTime=at(e.date),laterTime=Math.min(END,eventTime+DAY*30),marketQuoted=eventTime>=MARKET,p0=priceAt(eventTime),p1=priceAt(laterTime),move=marketQuoted?(p1/p0-1)*100:null;
   return `<div class="modal-backdrop"><section class="modal event-feedback-modal${e.celebrate?" event-celebrate":""}" role="dialog" aria-modal="true" aria-labelledby="event-title"><div class="modal-top"></div><div class="modal-body">${e.celebrate?`<div class="celebrate-banner">A milestone in the story</div>`:""}<div class="modal-kicker">Historical chapter · ${dateFmt(eventTime)} · ${e.cat}</div><h2 id="event-title">${e.title}</h2><div class="event-reading"><section><span>What happened</span><p class="lead">${e.dek}</p></section><section><span>Why it mattered</span><p>${e.body}</p></section><section class="event-effect"><span>Effect on your operation</span><p>${eventGameplayEffect(e)}</p></section></div>${conferenceSceneHtml(e)}${eventReactionsHtml(e)}<div class="card-head event-market-head"><h3>What the market did next</h3><div class="meta">CONTEXT · NOT CAUSATION</div></div><div class="intro-grid"><div class="intro-fact"><b>${marketQuoted?fmtUsd(p0):"No USD market"}</b><span>BTC price on ${dateFmt(eventTime,true)}</span></div><div class="intro-fact"><b>${marketQuoted?fmtUsd(p1):"Not applicable"}</b><span>BTC price 30 days later</span></div><div class="intro-fact"><b style="color:${move===null?"var(--muted)":move>=0?"var(--green)":"var(--red)"}">${move===null?"-":`${move>=0?"+":""}${move.toFixed(1)}%`}</b><span>30-day market path</span></div></div><p class="modal-note">The price path is independent context. It does not claim this headline caused the move.</p><div class="modal-actions"><button class="action primary" data-action="close-event">${e.conference?"Return to your operation":"Continue with this effect applied"}</button></div></div></section></div>`
@@ -13,6 +14,7 @@ function eventModal(){
    can only change the setup that allowed it, and that is a decision they can only make if the
    game tells them what the setup was. */
 function lossModal(){
+  if(typeof uiConfigAllows==="function"&&!uiConfigAllows("popups"))return"";
   const loss=typeof pendingLoss==="function"?pendingLoss():null;if(!loss)return"";
   const queued=lossQueue().length-1;
   const kind=LOSS_KINDS[loss.kind]||LOSS_KINDS.stolen;

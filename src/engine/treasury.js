@@ -132,12 +132,15 @@ function fetchReserveBlockReason(s=state){
   if(s.time<MARKET)return "There is no market yet to sell the coins on.";
   if(coldLockedBtc(s)<=1e-9)return "Nothing is held in cold storage.";
   const sign=coldSpendBlockReason(s,{settling:true});if(sign)return sign;
-  if(s.debt>0)return "You are already carrying arrears. Missing a second bill cuts the grid, so raise this one another way.";
   return "";
 }
 function reserveNeededBtc(s=state){
   const p=s.pendingSettlement;if(!p||s.time<MARKET)return 0;
-  return Math.max(0,p.due-s.cash)/(priceAt(s.time)*(1-RESERVE_FEE))*RESERVE_BUFFER;
+  // A cold-only operation must also be able to clear an earlier arrear. Before this,
+  // debt made the reserve card refuse while the paused settlement blocked the ordinary
+  // cold-to-hot transfer: the run stayed alive, but there was no route to liquidity.
+  const fiatNeeded=Math.max(0,p.due-s.cash)+Math.max(0,s.debt||0);
+  return fiatNeeded/(priceAt(s.time)*(1-RESERVE_FEE))*RESERVE_BUFFER;
 }
 /* The reserve to fetch: what the bill needs, or everything cold if that is not enough. */
 function reservePlan(rush=false,s=state){
@@ -150,7 +153,8 @@ function fetchReserve(rush=false){
   if(reason)return showToast("Cannot fetch the reserve",reason,"bad","custody");
   const plan=reservePlan(rush);
   if(plan.gross<=plan.fee)return showToast("Not worth fetching",`The ${fmtBtc(plan.fee)} network fee is more than the ${fmtBtc(plan.gross)} the bill needs.`,"bad","custody");
-  // Carry the shortfall and restart the clock first; then set the coins moving.
+  // Carry the current shortfall and restart the clock first; an earlier arrear is
+  // carried forward too, so the landed coins can clear both from Finance.
   deferSettlement();
   beginColdSpend("hot",plan.gross,plan.fee,{rush,purpose:"settlement",fraction:plan.fraction});
 }

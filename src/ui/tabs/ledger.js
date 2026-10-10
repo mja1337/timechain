@@ -1,13 +1,13 @@
 "use strict";
 
 function correspondenceLedgerSection(){
-  const letters=(Array.isArray(state.correspondence)?state.correspondence:[]).filter(m=>FREEBILL_LETTERS[m.id]);
-  const current=letters.filter(m=>FREEBILL_LETTERS[m.id].kind!=="story"&&m.resolvedAt===null).length;
+  const letters=(Array.isArray(state.correspondence)?state.correspondence:[]).filter(m=>CLAUDE1337_LETTERS[m.id]);
+  const current=letters.filter(m=>CLAUDE1337_LETTERS[m.id].kind!=="story"&&m.resolvedAt===null).length;
   const rows=letters.slice().reverse().map(m=>{
-    const letter=FREEBILL_LETTERS[m.id],story=letter.kind==="story",active=!story&&m.resolvedAt===null;
-    return `<details class="freebill-letter"><summary><span>FreeBill · ${dateFmt(m.time)}</span><b>${escapeHtml(letter.subject)}</b><small>${story?"Campaign letter":active?"Needs attention":`Addressed · ${dateFmt(m.resolvedAt)}`}</small></summary><div class="freebill-letter-body">${letter.paragraphs.map(p=>`<p>${escapeHtml(p)}</p>`).join("")}${story?"":`<div class="freebill-finding"><b>${active?"Your current setup":"Finding when this arrived"}</b><p>${escapeHtml(m.finding)}</p>${active?`<button class="action small" data-action="tab" data-value="treasury">Review your keys in Treasury</button>`:""}${active&&m.reopenedAt!==null?`<p>This finding returned on ${dateFmt(m.reopenedAt)}.</p>`:""}</div>`}</div></details>`;
+    const letter=CLAUDE1337_LETTERS[m.id],story=letter.kind==="story",active=!story&&m.resolvedAt===null;
+    return `<details class="claude1337-letter"><summary><span>claude1337 · ${dateFmt(m.time)}</span><b>${escapeHtml(letter.subject)}</b><small>${story?"Campaign letter":active?"Needs attention":`Addressed · ${dateFmt(m.resolvedAt)}`}</small></summary><div class="claude1337-letter-body">${letter.paragraphs.map(p=>`<p>${escapeHtml(p)}</p>`).join("")}${story?"":`<div class="claude1337-finding"><b>${active?"Your current setup":"Finding when this arrived"}</b><p>${escapeHtml(m.finding)}</p>${active?`<button class="action small" data-action="tab" data-value="treasury">Review your keys in Treasury</button>`:""}${active&&m.reopenedAt!==null?`<p>This finding returned on ${dateFmt(m.reopenedAt)}.</p>`:""}</div>`}</div></details>`;
   }).join("");
-  return `<section class="card span-12"><div class="card-head"><h2>Letters from FreeBill</h2><div class="meta">${current} NEED ATTENTION</div></div><div class="card-pad"><p>The friend who talked you into this is still writing. Notes on what you have built, what it now depends on, and what deserves another look. Fictional letters, kept with your run.</p>${rows||"<p>No letters yet. FreeBill writes as the operation develops, and when your custody setup gives him something to worry about.</p>"}</div></section>`;
+  return `<section class="card span-12"><div class="card-head"><h2>Letters from claude1337</h2><div class="meta">${current} NEED ATTENTION</div></div><div class="card-pad"><p>The friend who talked you into this is still writing. Notes on what you have built, what it now depends on, and what deserves another look. Fictional letters, kept with your run.</p>${rows||"<p>No letters yet. claude1337 writes as the operation develops, and when your custody setup gives him something to worry about.</p>"}</div></section>`;
 }
 
 function milestonesLedgerSection(){
