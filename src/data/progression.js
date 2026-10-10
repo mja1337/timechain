@@ -78,6 +78,7 @@ const SKILLS=[
 
   {id:"poolops",branch:"Operations",name:"Pool operations",desc:"Pool fees fall 0.4 percentage points.",cost:2,date:"2010-12-16"},
   {id:"monitoring",branch:"Operations",name:"Fleet monitoring",desc:"Uptime improves and connectivity incidents become less likely.",cost:3,req:"poolops",date:"2011-01-01",minFacility:2},
+  {id:"swarmmgmt",branch:"Operations",name:"Swarm management",desc:"Signed ASIC firmware rollouts cost 35% less.",cost:4,req:"monitoring",date:"2017-04-26",minFacility:2},
   {id:"fieldservice",branch:"Operations",name:"Field service technique",desc:"Repair complications happen half as often.",cost:4,req:"monitoring",date:"2014-01-01",minFacility:3},
   {id:"blocktemplate",branch:"Operations",name:"Block-template construction",req:"monitoring",desc:"Solo mining on your own node earns the block's fees as well as its subsidy.",cost:4,date:"2012-01-01"},
 

@@ -276,6 +276,7 @@ function log(text,amount="",category=""){
 }
 function operating(){const fs=fleet();return state.power&&!gridCutOff()&&!state.policyLock&&!siteOutage()&&!fleetGrounded()&&fs.within&&fs.hash>0}
 function asicCount(){return HARDWARE.filter(h=>h.era==="ASIC"||h.era==="HYDRO ASIC").reduce((n,h)=>n+(state.hardware[h.id]||0),0)}
+function firmwarePatchCost(s=state){const count=HARDWARE.filter(h=>h.era==="ASIC"||h.era==="HYDRO ASIC").reduce((n,h)=>n+(s.hardware?.[h.id]||0),0);return Math.max(75,count*18)*(s.skills?.includes("swarmmgmt")?.65:1)}
 /* Signed cover lasts longer and fails less often for an operator who treats firmware as
    maintenance rather than an emergency. */
 function firmwareCoverDays(s=state){return s.skills?.includes("firmwarehygiene")?900:540}
@@ -369,7 +370,7 @@ function advanceLearning(){
 }
 function covidPartsMarket(){return state.time>=at("2020-03-12")&&state.time<at("2021-07-01")}
 function patchFirmware(){
-  const count=asicCount(),cost=Math.max(75,count*18);if(!count)return showToast("No ASIC fleet","Firmware patching applies to ASIC and hydro ASIC hardware.");
+  const count=asicCount(),cost=firmwarePatchCost();if(!count)return showToast("No ASIC fleet","Firmware patching applies to ASIC and hydro ASIC hardware.");
   if(state.cash<cost)return showToast("Not enough cash",`Signed firmware rollout costs ${fmtUsd(cost)}.`);
   state.cash-=cost;state.ops.firmwarePatchedUntil=state.time+DAY*firmwareCoverDays();state.ops.hijackUntil=0;
   log("ASIC firmware patched",`${count} machines · protected for 18 months`);showToast("Fleet patched","Signed firmware is current for 18 simulation months.");save();render();
@@ -631,4 +632,4 @@ function setTimer(){
   if(state.speed>0){state.lastReal=Date.now();timer=setInterval(tick,Math.max(70,2000/state.speed))}
 }
 function startMempoolTimer(){clearInterval(mempoolTimer);mempoolTimer=setInterval(()=>{if(activeTab==="dashboard"&&state.speed>0)refreshDashboardVisuals()},1200)}
-function save(){return writeSave(state)}
+function save(){if(typeof updateCorrespondence==="function")updateCorrespondence();return writeSave(state)}

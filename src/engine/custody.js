@@ -127,7 +127,7 @@ function custodyReadiness(s=state){
     const first=set.assigned.find(k=>k.exposed);
     return{label:"Key exposed",tone:"bad",detail:first&&first.exposed.cause==="former-employee"
       ?`A former ${STAFF.find(r=>r.id===first.exposed.role)?.name?.toLowerCase()||"employee"} knew ${first.label}. Rotate it onto a spare signer`
-      :"A backup of an assigned key was stolen. Replace that key: until you do, somebody else holds it"}}
+      :"An assigned key was copied or its backup was stolen. Rotate that key: somebody else now knows the secret"}}
   if(set.liveDistinct<set.policy.threshold)return{label:"Signers destroyed",tone:"bad",
     detail:set.usable>=set.policy.threshold?"Restore the keys from their backups onto new devices":"Not enough keys survive to sign or to rebuild. The coins are stranded"};
   if(set.unbacked>0)return{label:"Keys not backed up",tone:"warn",
@@ -216,7 +216,7 @@ function receiveCustodyOrder(order,when){
     for(let i=0;i<order.qty;i++){
       c.seq=(c.seq||0)+1;
       c.devices.push({uid:`d${c.seq}`,product:p.id,supplier:order.supplier||p.supplier,
-        boughtAt:order.boughtAt||when,keyId:null,place:"site"});
+        boughtAt:order.boughtAt||when,keyId:null,place:"site",workshopSetup:1});
     }
   } else if(p.kind==="kit"){
     for(const [pid,n] of Object.entries(p.contains||{}))add(pid,n*order.qty);
@@ -229,7 +229,7 @@ function advanceCustodyOrders(next){
     if(pendingAt(o,next))return true;
     receiveCustodyOrder({...o,boughtAt:o.due-((custodyProduct(o.id)?.lead||0)*DAY)},next);
     const p=custodyProduct(o.id);
-    showToast("Custody hardware delivered",`${o.qty} × ${p?p.name:o.id} has arrived.`,"info","custody");
+    showToast("Custody hardware delivered",`${o.qty} × ${p?p.name:o.id} has arrived. ${p?.kind==="signer"?"A signer protects the key while approving payments; owning one alone does not protect a balance. Generate or restore a key, then check the wallet policy and recovery plan.":p?.kind==="backup"?"Durable material helps a backup survive physical damage. Once recorded, the secret still needs protection from being read or stolen.":"The parts are available for your custody setup."}`,"info","custody");
     renderFullQueued=true;
     return false;
   });
@@ -238,9 +238,9 @@ function advanceCustodyOrders(next){
     const build=CUSTODY_BUILDS[b.build];
     c.seq=(c.seq||0)+1;
     c.devices.push({uid:`d${c.seq}`,product:build.id,supplier:"selfbuilt",boughtAt:b.startedAt,keyId:null,place:"site",
-      enclosed:!!b.enclosed});
+      enclosed:!!b.enclosed,workshopSetup:1});
     log(`Assembled ${build.name}`,b.enclosed?"Verified and enclosed":"Verified, no enclosure","custody");
-    showToast("SeedSigner assembled",`The build is verified and ready to generate a key.`,"info","custody");
+    showToast("SeedSigner assembled",`The assembly is ready to generate or restore a key. This signer forgets the seed between uses, so the backup is essential: losing the device need not lose the wallet, but losing the only seed copy can.`,"info","custody");
     renderFullQueued=true;
     return false;
   });
@@ -277,6 +277,7 @@ function assembleCustodyBuild(buildId){
    why losing that device is not losing the wallet. */
 function generateCustodyKey(uid){
   const device=custodyDevice(uid);if(!device)return;
+  if(typeof workshopPrepared==="function"&&!workshopPrepared(device))return showToast("Prepare the signer first","Inspect the device and prepare its signing client in the custody workshop before creating a key.","blocked","custody");
   if(device.keyId)return showToast("Device already holds a key",`Generate on a device that has none, or the two keys will not be independent.`);
   const product=custodyProduct(device.product);
   const c=state.custody;
@@ -287,7 +288,7 @@ function generateCustodyKey(uid){
     weakEntropy:custodyWeakEntropyAt(product,state.time)};
   c.keys.push(key);device.keyId=key.id;
   log(`Generated key ${key.label}`,`${product?product.name:device.product}${product?.stateless?" · stateless signer":""}`,"custody");
-  showToast("Key generated",`Key ${key.label} exists on ${product?product.name:"the device"}. Back it up, then assign it to a wallet.`,"info","custody");
+  showToast("Key generated",`Key ${key.label} exists on ${product?product.name:"the device"}. This device holds the signing secret, not the coins themselves. Back the key up so you can recover after a device failure, then assign it to the cold-storage policy.`,"info","custody");
   save();render();
 }
 /* Restoring an existing seed onto a second device. The model keeps the seed identity, so
@@ -308,7 +309,7 @@ function restoreCustodyKey(uid,keyId){
   }
   device.keyId=key.id;
   log(`Restored ${key.label} to a second device`,"Still one key, on two devices","custody");
-  showToast("Seed restored",`${key.label} is now on two devices. That is still one key: a wallet cannot count it twice.`,"notice","custody");
+  showToast("Seed restored",`${key.label} can now sign from either device. That helps if one device fails, but both hold the same secret: copying a key does not create a second approval for multisig.`,"notice","custody");
   save();render();
 }
 
@@ -323,13 +324,13 @@ function backupCustodyKey(keyId,productId){
   }
   key.backup={product:p.id,durability:p.durability||"paper",at:state.time,place:"site"};
   log(`Backed up key ${key.label}`,p.name,"custody");
-  showToast("Key backed up",`${key.label} is recorded on ${p.name}.`,"info","custody");
+  showToast("Key backed up",`${key.label} is recorded on ${p.name}. This copy can restore spending access if the device dies. It is kept at the mine for now: move it away from the same fire risk, and protect it from anyone who could read it.`,"info","custody");
   save();render();
 }
 function setCustodyPolicy(id){
   const policy=custodyPolicy(id);
   if(policy.threshold>1&&!hasSkill("multisig"))
-    return showToast("Multisig discipline required","Running a quorum wallet safely is a skill, and an unpractised one loses coins.");
+    return showToast("Multisig discipline required","Multisig divides permission to spend between independent keys. Unlock Multisig discipline first: you need enough keys to approve a payment, enough backups to recover, and a record of how the wallet fits together.");
   state.custody.policy=policy.id;
   state.custody.assigned=(state.custody.assigned||[]).slice(0,policy.keys);
   if(policy.threshold<=1)state.custody.configBackedUp=false;
@@ -345,7 +346,7 @@ function assignCustodyKey(keyId){
   if(c.assigned.length>=policy.keys)return showToast("Wallet is full",`${policy.name} takes ${policy.keys} key${policy.keys===1?"":"s"}.`);
   const seeds=custodyAssignedKeys().map(k=>k.seed);
   if(seeds.includes(key.seed))return showToast("That is the same key",
-    "This seed is already assigned. Two devices holding one seed give a wallet one key, not two.");
+    "This seed is already assigned. If someone copies that secret, they can use every device holding it. Multisig needs independently generated keys so one stolen secret cannot count as several approvals.");
   c.assigned.push(keyId);
   // Changing the key set invalidates the descriptor you previously wrote down.
   if(policy.threshold>1)c.configBackedUp=false;
@@ -364,7 +365,7 @@ function backupCustodyConfig(){
   c.configBackedUp=true;c.configPlace="site";
   log("Backed up the wallet configuration","Policy, key fingerprints and derivation recorded","custody");
   showToast("Configuration backed up",
-    "The descriptor is written down alongside the seeds. Without it, seeds alone cannot rebuild a multisig wallet.","info","custody");
+    "You have recorded which keys belong together and how they form the wallet. The backups provide the secrets; this configuration provides the map. Keep a copy away from the same building so recovery does not depend on the original devices surviving.","info","custody");
   save();render();
 }
 

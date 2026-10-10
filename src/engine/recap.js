@@ -23,9 +23,9 @@ function careerSummaryHtml(context="intro"){
 }
 function settlementRescueFeedback(kind,paid,cashAfter){
   if(kind==="btc-rescue")return["Bill paid by selling BTC",`${fmtUsd(paid)} was settled. ${fmtUsd(cashAfter)} cash remains; this month counts as a rescue, not a clean settlement.`];
-  if(kind==="liquidation")return["Bill paid by selling miners",`${fmtUsd(paid)} was settled. ${fmtUsd(cashAfter)} cash remains and the sold hash rate is permanently gone.`];
+  if(kind==="liquidation")return["Bill paid by selling miners",`${fmtUsd(paid)} was settled. ${fmtUsd(cashAfter)} cash remains. Those miners can no longer earn for you; check whether the smaller fleet can cover its remaining costs.`];
   if(kind==="secured")return["Bill paid by borrowing against your coins",`${fmtUsd(paid)} was settled. ${fmtUsd(cashAfter)} cash remains; the loan adds interest to every bill until it is repaid and a fall in the price can call it.`];
-  if(kind==="bridge")return["Bill paid with emergency debt",`${fmtUsd(paid)} was settled. The bridge principal remains in project debt and makes the next bill harder to absorb.`];
+  if(kind==="bridge")return["Bill paid with emergency debt",`${fmtUsd(paid)} was settled. The debt remains, and interest adds to future bills. You have bought time to improve cash flow; borrowing again cannot make an ongoing operating loss disappear.`];
   return null;
 }
 function runRecap(){

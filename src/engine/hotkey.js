@@ -108,11 +108,11 @@ function hotKeyStolen(cause,next=state.time,silent=false){
   if(hot>0){
     const taken=hot*(HOT_THEFT_FLOOR+HOT_THEFT_SPREAD*hashRoll(state.seed,"hottheft",cause,next));
     state.wallets.hot=Math.max(0,hot-taken);
-    const who=cause==="seizure"?"The authorities":"Whoever took it";
+    const who=cause==="seizure"?"The authorities":cause==="betrayal"?"Your friend":"Whoever took it";
     log("Online wallet emptied",`-${fmtBtc(taken)} · the key was taken`,"custody");
-    reportCoinLoss({title:cause==="seizure"?"The authorities held the key to your online wallet":"The key to your online wallet was taken",kind:"stolen",btc:taken,cause,scene:cause,odds:cause==="burglary"?{monthly:placeRate("site","burglary"),note:"A break-in cannot be stopped from here, but what it finds can be limited: keep only a working balance in the online wallet."}:null,from:"your online wallet",
+    reportCoinLoss({title:cause==="seizure"?"The authorities held the key to your online wallet":cause==="betrayal"?"Your friend copied the online wallet's recovery words":"The key to your online wallet was taken",kind:"stolen",btc:taken,cause,scene:cause,odds:cause==="burglary"?{monthly:placeRate("site","burglary"),note:"A break-in cannot be stopped from here, but what it finds can be limited: keep only a working balance in the online wallet."}:cause==="betrayal"?{monthly:placeRate("trusted","betrayal"),note:"A fictional friend-access risk equal to flooding at this house. A bank deposit box has no friend-access roll."}:null,from:"your online wallet",
       what:`${who} had the key to your online wallet, and ${fmtBtc(taken)} left within the day. You moved what was left to a new wallet.`,
-      why:"A software key that is not protected by anything but the room it is in belongs to whoever gets into the room.",
+      why:cause==="betrayal"?"Your friend could read the online wallet's recovery material. The original copy stayed intact, but copying the secret gave them the same spending authority.":"A software key that is not protected by anything but the room it is in belongs to whoever gets into the room.",
       remedy:"Keep the backup somewhere other than the computer, and keep the balance in the online wallet small: what you do not need this week belongs in cold storage.",tab:"custody"});
   } else log("Online wallet replaced","The key was taken. There was nothing in it","custody");
   replaceHotKey(key);
@@ -121,7 +121,7 @@ function hotKeyStolen(cause,next=state.time,silent=false){
 function hotKeyAfterIncident(placeId,kind,next,silent=false){
   const key=hotKey();if(!key||hotKeyGrace())return;
   // Somebody took the seed backup: they hold the key, wherever the computer is.
-  if((kind==="burglary"||kind==="seizure")&&key.exposed&&key.exposed.at===next)return hotKeyStolen(kind,next,silent);
+  if((kind==="burglary"||kind==="seizure"||kind==="betrayal")&&key.exposed&&key.exposed.at===next)return hotKeyStolen(kind,next,silent);
   if(placeId!=="site")return;
   if(kind==="burglary")return hotKeyStolen("burglary",next,silent);
   return hotKeyLost(kind,next,silent);
@@ -134,7 +134,7 @@ function advanceHotKeyRisk(next,silent=false){
   if(!hotKeyBackedUp()&&!state.custody.hotWarned){
     state.custody.hotWarned=true;
     log("Your online wallet has no backup",`${key.label} exists only on the mining computer`,"custody");
-    if(!silent)showToast("Back up your wallet","Coins have arrived in a wallet that exists only on the computer in the mine. Write the key down, and keep it somewhere that a fire at the mine cannot reach.","warning","custody");
+    if(!silent)showToast("Back up your wallet","Your first coins depend on a key held only on the mining computer. Bitcoin has no account-recovery desk if that disk dies. Make a backup, then keep it apart from the computer and private: the copy can restore access, but it can also give someone else access.","warning","custody");
   }
   if(hotKeyGrace())return;
   const month=new Date(next).toISOString().slice(0,7);

@@ -35,6 +35,7 @@ const TOAST_DEFERRABLE=["success","milestone","info","status"];
 let deferredToasts=[];
 function blockingModalOpen(){return !!document.querySelector(".modal-backdrop")}
 function flushDeferredToasts(){
+  updateNotificationPrompt();
   if(!deferredToasts.length||blockingModalOpen())return;
   const t=deferredToasts[deferredToasts.length-1];deferredToasts=[];
   showToast(t.title,t.message,t.kind,t.tab,t.anchor,t.lifeMs);
@@ -50,8 +51,52 @@ function announceSaveState(){
 const TOAST_COALESCE_MS=9000,TOAST_BASE_MS=8500,TOAST_MAX_MS=20000;
 let toastRepeats=0,toastLastTitle="",toastLastAt=0;
 function toastLife(){return Math.min(TOAST_MAX_MS,TOAST_BASE_MS+toastRepeats*1200)}
+/* This is a presentation preference only: do not spend simulation randomness or
+   discard the underlying event. Skip work before toast markup, timers and flashes. */
+const NOTIFICATION_BURST_MS=30000,NOTIFICATION_BURST_COUNT=20;
+let notificationArrivals=[],notificationPromptOpen=false,notificationPromptAfter=0,notificationSkipCredit=0;
+const notificationFaultLast=new Map();
+function notificationReduction(){const value=Number(state.notificationReduction);return Number.isFinite(value)?Math.max(0,Math.min(100,value)):0}
+function notificationPromptHtml(){
+  if(!notificationPromptOpen||blockingModalOpen())return "";
+  const reduction=notificationReduction();
+  return `<aside class="notification-prompt" aria-label="Notification volume"><h3>Give the messages some breathing room</h3><p>Routine notifications are arriving frequently. Show fewer to reduce interruptions and toast rendering work.</p><p>Reduce routine toasts by <strong>${reduction}%</strong>. The first fault alert, critical alerts, warnings, milestones and blocked actions still appear. Repeated faults and completion messages can be reduced; the simulation keeps running normally.</p><div class="actions">${[0,25,50,75,90,100].map(value=>`<button class="action small ${value===reduction?"primary":""}" data-action="notification-reduction" data-value="${value}" aria-pressed="${value===reduction}">${value}%</button>`).join("")}</div><button class="action small" data-action="notification-prompt-close">Keep current setting</button><p class="modal-note">Change this any time using Notifications in the footer.</p></aside>`;
+}
+function updateNotificationPrompt(){
+  document.querySelector(".notification-prompt")?.remove();
+  const markup=notificationPromptHtml();if(markup&&state.started)document.getElementById("app")?.insertAdjacentHTML("beforeend",markup);
+}
+function notificationAction(action,value){
+  if(action==="notification-settings"){notificationPromptOpen=true;updateNotificationPrompt();return}
+  if(action==="notification-reduction"){
+    const amount=Number(value);if(![0,25,50,75,90,100].includes(amount))return;
+    state.notificationReduction=amount;notificationSkipCredit=0;notificationPromptOpen=false;
+    notificationPromptAfter=Date.now()+5*60*1000;notificationArrivals=[];save();updateNotificationPrompt();return;
+  }
+  notificationPromptOpen=false;notificationPromptAfter=Date.now()+5*60*1000;notificationArrivals=[];updateNotificationPrompt();
+}
+function suppressRoutineNotification(title,kind){
+  const now=Date.now();let routine=["success","status","info"].includes(kind);
+  if(kind==="bad"&&title==="Mining capacity lost to a fault"){
+    const previous=notificationFaultLast.get(title);routine=previous!==undefined&&now-previous<60000;
+    // Keep the first fault in each minute, even at a 100% routine reduction.
+    if(!routine)notificationFaultLast.set(title,now);
+  }
+  if(!routine)return false;
+  notificationArrivals=notificationArrivals.filter(time=>now-time<NOTIFICATION_BURST_MS);
+  notificationArrivals.push(now);
+  if(notificationArrivals.length>=NOTIFICATION_BURST_COUNT&&now>=notificationPromptAfter&&!notificationPromptOpen&&notificationReduction()===0){
+    notificationPromptOpen=true;updateNotificationPrompt();
+  }
+  // The bounded window counts arrivals even when hidden, without keeping an event queue.
+  notificationArrivals=notificationArrivals.slice(-NOTIFICATION_BURST_COUNT);
+  notificationSkipCredit+=notificationReduction();
+  if(notificationSkipCredit>=100){notificationSkipCredit-=100;return true}
+  return false;
+}
 function showToast(title,message,kind="info",tab=null,anchor=null,lifeMs=0){
   kind=feedbackKind(title,kind);
+  if(suppressRoutineNotification(title,kind))return;
   if(TOAST_DEFERRABLE.includes(kind)&&blockingModalOpen()){deferredToasts=[...deferredToasts.filter(t=>t.title!==title),{title,message,kind,tab,anchor,lifeMs}].slice(-3);return}
   const now=Date.now(),repeat=title===toastLastTitle&&now-toastLastAt<TOAST_COALESCE_MS&&!!document.querySelector(".toast");
   toastRepeats=repeat?toastRepeats+1:0;

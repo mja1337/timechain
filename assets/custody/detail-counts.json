@@ -1,0 +1,87 @@
+{
+  "basic-pc": {
+    "originalGeometries": 6,
+    "target": 45,
+    "geometries": 72
+  },
+  "mini-pc": {
+    "originalGeometries": 5,
+    "target": 38,
+    "geometries": 71
+  },
+  "pi-kit": {
+    "originalGeometries": 8,
+    "target": 60,
+    "geometries": 82
+  },
+  "hardware-wallet": {
+    "originalGeometries": 6,
+    "target": 45,
+    "geometries": 80
+  },
+  "qr-signer": {
+    "originalGeometries": 6,
+    "target": 45,
+    "geometries": 80
+  },
+  "microsd": {
+    "originalGeometries": 4,
+    "target": 30,
+    "geometries": 77
+  },
+  "usb-drive": {
+    "originalGeometries": 6,
+    "target": 45,
+    "geometries": 80
+  },
+  "paper-backup": {
+    "originalGeometries": 3,
+    "target": 23,
+    "geometries": 79
+  },
+  "steel-backup": {
+    "originalGeometries": 5,
+    "target": 38,
+    "geometries": 79
+  },
+  "bitcoin-node": {
+    "geometries": 80,
+    "newAsset": true
+  },
+  "lightning-node": {
+    "geometries": 89,
+    "newAsset": true
+  },
+  "trezorone": {
+    "geometries": 76,
+    "newAsset": true
+  },
+  "nanos": {
+    "geometries": 76,
+    "newAsset": true
+  },
+  "coldcard": {
+    "geometries": 76,
+    "newAsset": true
+  },
+  "coldcardmk4": {
+    "geometries": 76,
+    "newAsset": true
+  },
+  "nanox": {
+    "geometries": 76,
+    "newAsset": true
+  },
+  "bitbox02": {
+    "geometries": 76,
+    "newAsset": true
+  },
+  "jade": {
+    "geometries": 76,
+    "newAsset": true
+  },
+  "passport": {
+    "geometries": 76,
+    "newAsset": true
+  }
+}

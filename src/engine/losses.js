@@ -26,7 +26,7 @@
 const LOSS_KINDS={
   stolen:{label:"Stolen",note:"Someone else can spend these coins now."},
   unrecoverable:{label:"Unrecoverable",note:"These coins are still on the chain. Nobody can move them, including you."},
-  counterparty:{label:"Held by someone else",note:"The coins were on a venue's balance sheet, not in your keys."},
+  counterparty:{label:"Held by someone else",note:"The operator controlled the keys. Your account balance depended on its ability and willingness to return the funds."},
   seized:{label:"Seized",note:"Sold out from under the operation to settle what it owed."}
 };
 
@@ -46,7 +46,7 @@ function pendingLoss(s=state){return lossQueue(s)[0]||null}
 function lossOddsText(o){
   const m=Number(o&&o.monthly);if(!(m>0&&m<1))return"";
   const oneIn=p=>`1 in ${fmtNum(Math.max(2,Math.round(1/p)))}`,year=1-Math.pow(1-m,12),pct=x=>x<.01?(x*100).toFixed(2):x<.1?(x*100).toFixed(1):(x*100).toFixed(0);
-  let t=`How likely was this? About ${oneIn(m)} in the month it happened (${pct(m)}%). The same roll comes round every month, so over a year of play it is about ${pct(year)}%.`;
+  let t=`In the game model, this was about ${oneIn(m)} in the month it happened (${pct(m)}%). The same roll comes round every month, so over a year of play it is about ${pct(year)}%.`;
   if(o.better>0&&o.better<m*.8)t+=` ${o.betterWhy||"With better precautions"} it would have been about ${oneIn(o.better)} a month.`;
   if(o.note)t+=` ${o.note}`;
   if(typeof state!=="undefined"&&state.time-(Number(state.campaignStart)||state.time)<DAY*120)t+=" It happened early in the run, which makes it mostly bad luck.";

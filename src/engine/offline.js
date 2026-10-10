@@ -22,7 +22,7 @@ function surfaceMissedEvent(){
   const queue=state.missedEvents||[];
   while(queue.length){
     const id=queue.shift(),e=EVENTS.find(x=>x.id===id);if(!e)continue;
-    state.points+=1;state.returnSpeed=state.speed||state.returnSpeed||1;state.speed=0;state.activeEvent=e.id;
+    if(e.imp===3)state.points+=1;state.returnSpeed=state.speed||state.returnSpeed||1;state.speed=0;state.activeEvent=e.id;
     if(typeof setTimer==="function")setTimer();
     return true;
   }

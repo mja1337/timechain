@@ -71,7 +71,7 @@ function custodyPlacesCard(){
   const places=CUSTODY_PLACES.filter(p=>!(p.id==="home"&&state.facility==="home")).map(p=>{
     const name=p.id==="site"&&state.facility==="home"?"Home (your mine)":p.name,items=placeContents(p.id);
     return `<article class="venue"><div class="risk ${placeYearlyChance(p)>.04?"high":placeYearlyChance(p)>.01?"medium":"low"}">${placeChanceWords(p).toUpperCase()}</div><h3>${name}</h3>
-      <p>${p.blurb}</p><p class="modal-note">${p.access===0?"No journey to reach it.":`${p.access} day${p.access===1?"":"s"} to fetch from.`}${p.fee?` ${fmtUsd(p.fee)} a month while anything is kept here.`:""}</p>
+      <p>${p.blurb}</p>${p.id==="trusted"?`<p class="modal-note">Friend-access risk: ${(placeRate(p.id,"betrayal")*100).toFixed(2)}% per simulated month when readable seed backups are here—the same modelled rate as flooding. Paper and steel can both be copied. A locked signer alone does not trigger this roll. Separation of addresses is not separation of access.</p>`:""}<p class="modal-note">${p.access===0?"No journey to reach it.":`${p.access} day${p.access===1?"":"s"} to fetch from.`}${p.fee?` ${fmtUsd(p.fee)} a month while anything is kept here.`:""}</p>
       ${items||`<p class="modal-note">Nothing kept here.</p>`}</article>`;
   }).join("");
   const loose=placeUnrecorded(),journeys=placeJourneyRows(),restore=placeRestoreRows();

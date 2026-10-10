@@ -149,7 +149,7 @@ function partsStatusStrip(){
 function firmwareStatusHtml(){
   const machines=asicCount();
   if(!machines||state.time<at("2017-04-26"))return"";
-  const due=firmwarePatchDue(),hijacked=firmwareHijacked(),cost=Math.max(75,machines*18);
+  const due=firmwarePatchDue(),hijacked=firmwareHijacked(),cost=firmwarePatchCost();
   const until=state.ops?.firmwarePatchedUntil||0;
   const tone=hijacked?"bad":due?"warn":"good";
   const headline=hijacked?"Fleet hijacked - 35% of hash diverted"

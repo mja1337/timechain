@@ -36,8 +36,8 @@ function coldSetupSteps(){
     done:devices.length>0,
     title:"Get a signer",
     why:state.time<at("2014-08-01")
-      ?"A signer is whatever holds a key and signs for it. Before hardware wallets that was an old computer that never connects to anything, which is exactly what cold storage meant. A beige tower from the late 1990s will do, and there is probably one in the basement."
-      :"A signer is the device that holds a key and signs for it: a hardware wallet, or an old computer that never connects to anything.",
+      ?"A signer approves transactions using a private key. In this early era, buy a Basic PC and keep it off the network. Separating that job from the mining laptop limits what malware on the laptop can reach. The new computer can still fail, so prepare recovery before relying on it."
+      :"A signer uses a private key to approve transactions. A separate device keeps that secret away from the everyday mining computer. It helps contain a compromise, but you still need to check what you approve and plan for the signer failing.",
     action:waiting?`<span class="label">Ordered · arrives in ${Math.max(1,Math.ceil((waiting.due-state.time)/DAY))} days</span>`
       :cheapest?`<button class="action small primary" data-action="custody-buy" data-id="${cheapest.id}"${state.cash<custodyUnitCost(cheapest)?" disabled":""}>${cheapest.acquire?`${custodyAcquireLabel(cheapest)} · ${custodyLeadDays(cheapest)}d`:`Order ${cheapest.name} · ${custodyUnitCost(cheapest)>0?fmtUsd(custodyUnitCost(cheapest)):"free"}${custodyLeadDays(cheapest)?` · ${custodyLeadDays(cheapest)}d`:""}`}</button>`:""
   });
@@ -45,28 +45,28 @@ function coldSetupSteps(){
   steps.push({
     done:keys.length>0,
     title:"Make a key on it",
-    why:"The key is created on the signer and stays there. Whoever can see it can spend the coins, which is why it is made on something that is not online.",
-    action:keyless?(keyless.restoring?`<span class="label">Restoring your key from its backup</span>`:(orphan&&custodyKeyRestorable(orphan))?`<button class="action small primary" data-action="custody-restore-key" data-id="${keyless.uid}" data-value="${orphan.id}">Restore your key from its backup</button>`:`<button class="action small primary" data-action="custody-genkey" data-id="${keyless.uid}">Generate a key</button>`):""
+    why:"Generate an unpredictable secret on the signer. A copied secret gives someone else the same signing power; in a single-key wallet that is enough to spend. Multisig needs independent secrets, so restoring one seed onto several devices does not create several approvals.",
+    action:keyless?(!workshopPrepared(keyless)?`<button class="action small primary" data-action="workshop-select" data-id="${workshopGroup(custodyProduct(keyless.product))}" data-value="${keyless.uid}">Inspect and prepare this signer</button>`:keyless.restoring?`<span class="label">Restoring your key from its backup</span>`:(orphan&&custodyKeyRestorable(orphan))?`<button class="action small primary" data-action="custody-restore-key" data-id="${keyless.uid}" data-value="${orphan.id}">Restore your key from its backup</button>`:`<button class="action small primary" data-action="custody-genkey" data-id="${keyless.uid}">Generate a key</button>`):""
   });
   // 3. A backup
   steps.push({
     done:keys.length>0&&!unbacked,
     title:"Write the key down",
-    why:"A signer can fail or burn, and the written seed is the wallet. Without it a dead signer means the coins are gone for good. Paper is free; it burns with the building it is kept in, so move it somewhere else once you can.",
+    why:"A backup lets you restore the signing secret if the device fails. Keep it private, because it carries the same authority as the original. Keep it apart from the signer, because two copies sharing one fire are not two recovery paths. Paper is free in the game; steel resists damage but can still be read.",
     action:unbacked?`<button class="action small primary" data-action="custody-backup" data-id="${unbacked.id}" data-value="paperbackup">Write it on paper · free</button>`:""
   });
   // 4. Into the wallet
   steps.push({
     done:set.ready,
-    title:"Put the key in your wallet",
-    why:"Until a key is assigned to your wallet the game treats nothing as cold storage. A single key is the simplest wallet; two-of-three comes later, with its own cost.",
+    title:"Choose which key can authorise spending",
+    why:"Assign the key to the spending policy: the rule your reserve wallet uses to accept a payment. One key is simple to coordinate, but a stolen copy gives full authority. A later two-of-three setup can tolerate one missing key and require two approvals; it also needs independent keys and a recorded configuration.",
     action:unassigned?`<button class="action small primary" data-action="custody-assign" data-id="${unassigned.id}">Assign to wallet</button>`:""
   });
   // 5. Coins in
   steps.push({
     done:cold>0,
     title:"Move coins in",
-    why:hot>0?`${fmtBtc(hot)} sits in the online wallet, on the mining computer. Anything you will not spend this month belongs offline.`:"There is nothing in the online wallet to move yet. Payouts can also be sent straight to cold storage from the Pools tab.",
+    why:hot>0?`${fmtBtc(hot)} sits in the online wallet, on the mining computer. Moving reserves behind separate keys limits what a compromised laptop can reach. Keep enough accessible for upcoming bills: cold transfers take simulation days.`:"There is nothing in the online wallet to move yet. Payouts can also be sent straight to cold storage from the Pools tab.",
     action:set.ready&&hot>0?`<button class="action small primary" data-action="transfer" data-from="hot" data-to="cold" data-value=".5">Move half</button><button class="action small" data-action="transfer" data-from="hot" data-to="cold" data-value=".25">Move a quarter</button>`:""
   });
   return steps;
@@ -74,20 +74,20 @@ function coldSetupSteps(){
 function coldSetupCard(){
   const steps=coldSetupSteps(),next=steps.findIndex(s=>!s.done),finished=next<0;
   const annual=hotWalletAnnualRisk(),grace=typeof hotKeyGrace==="function"&&hotKeyGrace();
-  const yearly=annual>0?` (about ${(annual*100).toFixed(1)}% a year, more the larger the share of your coins sitting in it)`:"";
+  const yearly=annual>0?` (modelled at about ${(annual*100).toFixed(1)}% a year, more the larger the share of your coins sitting in it)`:"";
   const risk=(state.wallets.hot||0)>0?(grace?`<p class="modal-note">Your online wallet cannot be lost in the first two months of a run. After that a fire, a break-in or a dead disk can take it${state.time>=at("2011-01-01")?`, and so can a compromised key${yearly}`:""}.</p>`
-    :`<p class="modal-note">Your online wallet can be taken by a fire, a break-in or a dead disk${state.time>=at("2011-01-01")?`, or by a compromised key${yearly}`:""}. Cold storage is what takes the coins out of that reach.</p>`):"";
-  if(finished)return `<section class="card span-12 cold-setup done"><div class="card-head"><h2>Set up cold storage</h2><div class="meta">DONE</div></div><div class="card-pad"><p class="lead" style="margin:0">Cold storage is set up: ${fmtBtc(state.wallets.cold||0)} is held offline. The keys, devices and backups below are where you add a second key, a safer place to keep the backup, or a quorum.</p>${risk}</div></section>`;
+    :`<p class="modal-note">Your online wallet can be taken by a fire, a break-in or a dead disk${state.time>=at("2011-01-01")?`, or by a compromised key${yearly}`:""}. Separate reserve keys reduce online exposure; their backups and locations still need protection.</p>`):"";
+  if(finished)return `<section class="card span-12 cold-setup done"><div class="card-head"><h2>Set up cold storage</h2><div class="meta">DONE</div></div><div class="card-pad"><p class="lead" style="margin:0">The reserve wallet is ready: ${fmtBtc(state.wallets.cold||0)} is held offline. The keys, devices and backups below are where you add a second key, a safer place to keep the backup, or a quorum.</p>${risk}</div></section>`;
   return `<section class="card span-12 cold-setup"><div class="card-head"><h2>Set up cold storage</h2><div class="meta">STEP ${next+1} OF ${steps.length}</div></div><div class="card-pad">
-    <p class="lead" style="margin:0 0 10px">Cold storage means a key that does not live on the mining computer. It takes five steps, in this order, and the button for the next one is on its line.</p>${risk}
+    <p class="lead" style="margin:0 0 10px">Cold storage means a key that does not live on the mining computer. These five steps separate daily spending from your reserves. Each one answers a different problem: signing, unpredictable secrets, recovery, spending permission and allocation.</p>${risk}
     <ol class="cold-steps">${steps.map((s,i)=>`<li class="${s.done?"done":i===next?"current":"later"}"><span class="cold-mark" aria-hidden="true">${s.done?"✓":i+1}</span><div><b>${s.title}</b><p>${s.why}</p></div><div class="actions">${i===next?s.action:""}</div></li>`).join("")}</ol></div></section>`;
 }
 
 /* The order of the page. Each entry is a heading as the card prints it (lower case) and the group it belongs to. */
 const CUSTODY_GROUPS=[
-  {id:"coins",title:"Your coins",note:"Where your bitcoin is today, and how to move it.",cards:["your keys decide who can spend your bitcoin","set up cold storage","your online wallet","wallet allocation","self-custody actions"]},
+  {id:"coins",title:"Your coins",note:"Where your bitcoin is today, and how to move it.",cards:["your keys decide who can spend your bitcoin","your custody workshop","set up cold storage","your online wallet","wallet allocation","self-custody actions"]},
   {id:"equipment",title:"Equipment and backups",note:"Buy a signer, make a key on it, back it up, and decide where each piece is kept.",cards:["custody supply","devices you own","keys, signers and recovery","where things are kept"]},
-  {id:"standing",title:"Spending and standing",note:"What it takes to get coins back out, and what a lender or insurer makes of your setup.",cards:["spending from cold storage","what lenders and insurers see","bitcoin calls to action"]},
+  {id:"standing",title:"Spending, lending and theft cover",note:"How a reserve payment is approved, then how the game's key and recovery checks affect borrowing and cover.",cards:["spending from cold storage","what lenders and insurers see","bitcoin calls to action"]},
   {id:"verify",title:"Verification",note:"Your node checks the rules for you. It does not hold your coins.",cards:["your node","full-node operations","wallet client"]},
   {id:"learn",title:"Learn",note:"Optional: the ideas behind all of the above, using your own balances.",cards:["custody map","custody threat lab"]},
 ];

@@ -22,7 +22,7 @@
 
 const TREASURY_SECTIONS=[
   {id:"market",name:"Market",hint:"Buy, sell and deposit"},
-  {id:"custody",name:"Custody",hint:"Keys, places, people"},
+  {id:"custody",name:"Custody",hint:"Spending control and recovery"},
   {id:"finance",name:"Finance",hint:"Bills, credit, cover"}
 ];
 const TREASURY_SECTION_IDS=TREASURY_SECTIONS.map(s=>s.id);
@@ -60,7 +60,7 @@ function treasurySectionBadges(){
     :reach.coldTooSlow?{text:"reserve too slow",tone:"halted"}:{text:`bill in ${reach.daysToBill}d`,tone:"good"};
   return{
     market:state.time<MARKET?{text:"no market yet",tone:""}:{text:fmtUsd(priceAt(state.time)),tone:"good"},
-    custody:{text:`${posture.tier} posture`,tone:posture.rank>=2?"good":posture.rank<1?"halted":""},
+    custody:{text:custodyAssessmentLabel(posture.tier),tone:posture.rank>=2?"good":posture.rank<1?"halted":""},
     finance
   };
 }
@@ -83,7 +83,7 @@ function treasuryStrip(){
     <div class="metric"><div class="label">Spendable</div><strong>${fmtUsd(state.cash)}</strong><small>${runway||"cash"}${state.debt>0?` · ${fmtUsd(state.debt)} overdue`:""}</small></div>
     <div class="metric"><div class="label">Hot wallet</div><strong>${fmtBtc(reach.hot)}</strong><small>sellable today${typeof hotKeyUnbacked==="function"&&hotKeyUnbacked()?" · key not backed up":""}</small></div>
     <div class="metric"><div class="label">Reserve</div><strong>${fmtBtc(reach.cold)}</strong><small>${reserve}${moving?` · ${moving}`:""}</small></div>
-    <div class="metric"><div class="label">Custody</div><strong>${posture.tier}</strong><small>${first?first.text:"nothing is holding it back"}</small></div>
+    <div class="metric"><div class="label">Key &amp; recovery checks</div><strong>${custodyAssessmentLabel(posture.tier)}</strong><small>${first?first.text:"No current findings in the game's checks; risks remain."}</small></div>
     <div class="metric"><div class="label">Next bill</div><strong>${reach.daysToBill} day${reach.daysToBill===1?"":"s"}</strong><small>${fmtUsd(forecast.estimated)}${reach.coldTooSlow?" · the reserve is too slow to meet it":forecast.cashAfter<0?" · cash will not cover it":" · covered"}</small></div>
   </div></section>`;
 }

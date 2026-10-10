@@ -73,14 +73,15 @@ function priceChartSvg(){
   const area=`${line}L${x(t1).toFixed(1)} ${H-padB}L${x(t0).toFixed(1)} ${H-padB}Z`;
   const ticks=priceChartTicks(lo,hi).map(v=>
     `<line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W-padR}" y2="${y(v).toFixed(1)}"/><text x="${padL-6}" y="${(y(v)+3).toFixed(1)}" text-anchor="end">${fmtCompactUsd(v)}</text>`).join("");
-  /* Halvings are the game's own calendar, and the only annotations here that are facts
-     rather than commentary. Nothing is claimed about what the price did after one. */
+  /* Keep recorded halvings distinct from estimated sandbox dates. The protocol fixes
+     the block interval between halvings; the future calendar is the game's model. */
   const halvings=[];
-  for(let i=1;i<=12;i++){
+  for(let i=1;i<=33;i++){
     const time=halvingTimeAt(i);
-    if(time<t0||time>t1)continue;
-    if(halvingIsProjected(i))continue;
-    halvings.push(`<line class="halving" x1="${x(time).toFixed(1)}" y1="${padT}" x2="${x(time).toFixed(1)}" y2="${H-padB}"/><text class="halving-label" x="${(x(time)+4).toFixed(1)}" y="${padT+9}">halving</text>`);
+    if(time>t1)break;
+    if(time<t0)continue;
+    const projected=halvingIsProjected(i),suffix=projected?" projected":"",nearRight=x(time)>W-padR-58;
+    halvings.push(`<line class="halving${suffix}" x1="${x(time).toFixed(1)}" y1="${padT}" x2="${x(time).toFixed(1)}" y2="${H-padB}"/><text class="halving-label${suffix}" x="${(x(time)+(nearRight?-4:4)).toFixed(1)}" y="${padT+9}" text-anchor="${nearRight?"end":"start"}">${projected?"halving*":"halving"}</text>`);
   }
   const dates=[t0,t0+(t1-t0)/2,t1].map((t,i)=>
     `<text x="${x(t).toFixed(1)}" y="${H-6}" text-anchor="${i===0?"start":i===2?"end":"middle"}">${dateFmt(t,true)}</text>`).join("");
@@ -126,6 +127,7 @@ function priceChartCard(){
   return `<section class="card span-12 price-chart-card"><div class="card-head"><h2>Bitcoin price</h2><div class="meta">${priceChartProvenance()} · LOG SCALE · TO ${dateFmt(state.time,true).toUpperCase()}</div></div>
     <div class="price-chart-controls">${PRICE_CHART_RANGES.map(r=>`<button class="action small ${r.id===active?"primary":""}" data-action="price-range" data-value="${r.id}">${r.label}</button>`).join("")}</div>
     <div class="price-chart-plot">${priceChartSvg()}</div>
+    ${series.length&&series[series.length-1][0]>=halvingTimeAt(5)?`<p class="modal-note price-chart-halving-key"><span class="recorded-halving">Green: recorded halving.</span> <span class="projected-halving">Fuchsia: halving*.</span> *Estimated date, not a recorded event. The model extends the last recorded halving by 210,000 blocks at an assumed ten minutes per block; real dates will vary.</p>`:""}
     ${stats}
     <p class="modal-note">${series.length&&series[series.length-1][0]>END?`Recorded daily observations to ${dateFmt(END,true)}, and a model past it - the continuation is not a forecast. `:"Recorded daily observations from the bundled dataset, "}interpolated the same way every other price in the game is. The series stops at the simulation's current date - this is a historical replay, and what happens next is the question.</p></section>`;
 }

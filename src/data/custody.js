@@ -19,23 +19,28 @@ const CUSTODY_PRODUCTS=[
   /* --- Commercial signing devices ------------------------------------------------ */
   /* The first signer there ever was: a computer that is simply never connected. Wallet files were kept this way
      from the first week, which is why cold storage is available from the first day rather than from 2012. */
-  {id:"beigepc",name:"Old beige PC, kept offline",kind:"signer",supplier:"basement",date:"2009-01-03",cost:0,lead:1,once:true,acquire:"Fetch it from the basement",acquireAgain:"Cobble one together from spare parts",
-    desc:"A tower from the late 1990s that has been under the stairs since the last century, wheezes when it boots and has never seen the internet, which is exactly the qualification. The key is made on it and signs on it, and anything it signs travels by USB stick. It is still a computer, so it can fail, and it lives wherever you put it, which at first is the mine. There is only the one, and if a fire takes it, anyone who can use a screwdriver can put another together from spare parts."},
-  {id:"trezorone",name:"Trezor One",kind:"signer",supplier:"trezor",date:"2014-08-01",cost:99,lead:9,
+  // Keep the original ID so existing devices and saved orders still resolve.
+  {id:"beigepc",name:"Basic PC",kind:"signer",supplier:"generic",date:"2009-01-03",cost:175,lead:1,computer:true,art:"basic-pc",
+    desc:"Budget parts. Nothing special, but brand new. One complete computer for offline signing: prepare its software, keep it separate from everyday browsing, and carry proposed and signed payments by transfer media. Buying the box does not create a key or a recovery plan."},
+  {id:"minipc",name:"Small-form-factor PC",kind:"signer",supplier:"generic",date:"2009-01-03",cost:295,lead:7,computer:true,art:"mini-pc",
+    desc:"A smaller complete computer for the same offline signing job. The smaller case changes the footprint, not the authority of its key or the need for recovery."},
+  {id:"pikit",name:"Raspberry Pi signing kit",kind:"signer",supplier:"generic",date:"2012-02-29",cost:205,lead:11,computer:true,art:"pi-kit",source:"https://www.raspberrypi.com/news/happy-birthday-2018/",
+    desc:"A single-board computer with power, case and storage included. The kit price is a game assumption, not the launch price of the board. Check compatible signing software and disable networking for its offline role."},
+  {id:"trezorone",art:"trezorone",name:"Trezor One",kind:"signer",supplier:"trezor",date:"2014-08-01",cost:99,lead:9,
     desc:"The first commercial hardware wallet. A screen, two buttons and a seed you write down yourself."},
-  {id:"nanos",name:"Ledger Nano S",kind:"signer",supplier:"ledger",date:"2016-06-01",cost:79,lead:9,
+  {id:"nanos",art:"nanos",name:"Ledger Nano S",kind:"signer",supplier:"ledger",date:"2016-06-01",cost:79,lead:9,
     desc:"Secure-element signer, sold through a direct e-commerce channel that keeps customer records."},
-  {id:"coldcard",name:"Coldcard Mk1",kind:"signer",supplier:"coinkite",date:"2018-05-01",cost:120,lead:14,
+  {id:"coldcard",art:"coldcard",name:"Coldcard Mk1",kind:"signer",supplier:"coinkite",date:"2018-05-01",cost:120,lead:14,
     desc:"Bitcoin-only, air-gappable, built to be used without ever touching a computer."},
-  {id:"coldcardmk4",name:"Coldcard Mk4",kind:"signer",supplier:"coinkite",date:"2021-11-01",cost:158,lead:14,
+  {id:"coldcardmk4",art:"coldcardmk4",name:"Coldcard Mk4",kind:"signer",supplier:"coinkite",date:"2021-11-01",cost:158,lead:14,
     desc:"USB-C, NFC and a faster secure element. Ships with the firmware line whose entropy defect surfaced in 2026."},
-  {id:"nanox",name:"Ledger Nano X",kind:"signer",supplier:"ledger",date:"2019-05-01",cost:119,lead:9,
+  {id:"nanox",art:"nanox",name:"Ledger Nano X",kind:"signer",supplier:"ledger",date:"2019-05-01",cost:119,lead:9,
     desc:"Bluetooth signer from the same direct channel as the Nano S."},
-  {id:"bitbox02",name:"BitBox02",kind:"signer",supplier:"shiftcrypto",date:"2019-09-01",cost:109,lead:12,
+  {id:"bitbox02",art:"bitbox02",name:"BitBox02",kind:"signer",supplier:"shiftcrypto",date:"2019-09-01",cost:109,lead:12,
     desc:"Microcontroller signer with a Bitcoin-only edition and a paired desktop app."},
-  {id:"jade",name:"Blockstream Jade",kind:"signer",supplier:"blockstream",date:"2021-01-01",cost:65,lead:12,
+  {id:"jade",art:"jade",name:"Blockstream Jade",kind:"signer",supplier:"blockstream",date:"2021-01-01",cost:65,lead:12,
     desc:"Open-source signer with a camera, usable fully air-gapped over QR codes."},
-  {id:"passport",name:"Foundation Passport",kind:"signer",supplier:"foundation",date:"2021-08-01",cost:259,lead:18,
+  {id:"passport",art:"passport",name:"Foundation Passport",kind:"signer",supplier:"foundation",date:"2021-08-01",cost:259,lead:18,
     desc:"Air-gapped by design: no USB data path at all, everything moves by QR and microSD."},
 
   /* --- The DIY signer, assembled from parts --------------------------------------- */
@@ -59,6 +64,8 @@ const CUSTODY_PRODUCTS=[
     desc:"Every component in one order. Faster and dearer than sourcing the parts separately."},
 
   /* --- Seed backup products -------------------------------------------------------- */
+  {id:"transferusb",name:"USB transfer stick",kind:"part",supplier:"generic",date:"2009-01-03",cost:6,lead:1,art:"usb-drive",
+    desc:"Carries a proposed payment to the offline PC and returns its signed transaction. Do not put recovery secrets on this courier. Check recipient and amount on the signer before approving."},
   {id:"paperbackup",name:"Paper and pencil",kind:"backup",supplier:"none",date:"2009-01-03",cost:0,lead:0,durability:"paper",
     desc:"Free, immediate, and destroyed by the first flood or fire it meets."},
   {id:"cryptosteel",name:"Stainless steel letter tiles",kind:"backup",supplier:"cryptosteel",date:"2015-06-01",cost:79,lead:16,durability:"steel",
@@ -132,10 +139,10 @@ const CUSTODY_PLACES=[
     blurb:"Away from the fleet, so a fire at the mine does not reach it. An ordinary house."},
   {id:"bank",name:"Bank deposit box",access:2,fee:15,rates:{fire:.0001,flood:.0001,burglary:.00005},
     blurb:"Fireproof and guarded, and open only in banking hours. It costs a fee every month, and it is in a country: a state that bans your business can open it."},
-  {id:"trusted",name:"A trusted person's house",access:2,fee:0,rates:{fire:.0008,flood:.0006,burglary:.0010},
-    blurb:"Free, and exactly as safe as their house and your friendship."},
+  {id:"trusted",name:"A trusted person's house",access:2,fee:0,rates:{fire:.0008,flood:.0006,burglary:.0010,betrayal:.0006},
+    blurb:"Free, and away from your own address. There is also a very small chance your friend learns what the seed can spend and helps themselves. In the game, that chance matches this house's flood rate; a bank deposit box has no friend-access roll."},
 ];
-const CUSTODY_PLACE_KINDS=["fire","flood","burglary"];
+const CUSTODY_PLACE_KINDS=["fire","flood","burglary","betrayal"];
 
 function custodyPlace(id){return CUSTODY_PLACES.find(p=>p.id===id)||null}
 function custodyPlaceName(id){return id==="transit"?"In transit":(custodyPlace(id)?.name||"Unrecorded")}
