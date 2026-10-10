@@ -2,7 +2,7 @@
 
 /* DATA LAYER - compact, offline historical anchors and gameplay estimates. */
 const LIGHTNING=Date.parse("2018-03-15T00:00:00Z"),PROJECT_FINANCE_START=Date.parse("2014-01-01T00:00:00Z");
-const DAY=86400000, GENESIS=Date.parse("2009-01-03T00:00:00Z"), START=Date.parse("2009-02-03T00:00:00Z"), END=Date.parse("2026-10-06T00:00:00Z"), MARKET=Date.parse("2010-07-17T00:00:00Z");
+const DAY=86400000, GENESIS=Date.parse("2009-01-03T00:00:00Z"), START=Date.parse("2009-02-03T00:00:00Z"), END=Date.parse("2026-10-09T00:00:00Z"), MARKET=Date.parse("2010-07-17T00:00:00Z");
 const SANDBOX_END=END+DAY*365.25*100;
 const at=d=>Date.parse(d+"T00:00:00Z");
 /* IS THIS PIECE OF WORK DUE YET?

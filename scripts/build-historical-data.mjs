@@ -10,7 +10,7 @@ const START = "2009-01-03";
 // The cut-off. DEFAULT_END is the bundled data's own cut-off, kept equal to meta.through and to
 // END in src/config/timeline.js; the weekly refresh (scripts/data-refresh.mjs) moves all three
 // together and nothing else. --end=YYYY-MM-DD or TIMECHAIN_DATA_END overrides it for one run.
-const DEFAULT_END = "2026-10-06";
+const DEFAULT_END = "2026-10-09";
 const END = resolveEnd();
 const DAY = 86_400_000;
 const METRICS = ["PriceUSD", "HashRate", "FeeTotNtv", "BlkCnt", "TxCnt", "CapMrktCurUSD"];
