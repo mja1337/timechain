@@ -75,6 +75,8 @@ node scripts/check-engine-behaviour.mjs
 
 Contracts are written to fail for a reason a reader can act on, and new ones are worth mutation-testing: reintroduce the bug and confirm the check catches it.
 
+**CI.** `.github/workflows/checks.yml` runs these checks (plus `check-conference-stories`, `check-event-reactions`, `check-event-sources`, `check-notification-volume` and `git diff --check`) on every pull request and every push to `main`. The recorded history is refreshed by a weekly workflow that opens one reviewable PR on `data/weekly-refresh` and never merges it. Its objectives, guardrails and review checklist, and the separate PR type for sourced news events, are in [`docs/data-refresh.md`](docs/data-refresh.md).
+
 The market-specific browser checklist is in [`docs/market-validation.md`](docs/market-validation.md). Use it for every change that touches exchange tickets, transaction reviews, settlement rescue or market copy: automated checks prove the source and engine contracts, while the browser flow proves that a quote can be reviewed, cancelled and confirmed without a render or console failure.
 
 The first three suites match source text (the engine-behaviour suite does not). That is fast and catches a great deal, but it pins the implementation rather than the rule: three of them broke during one refactoring session while the behaviour they guarded was intact, because a function had been renamed or an expression had moved. `check-engine-behaviour.mjs` exists for the other half of the problem - it runs the engine, so a rename passes and only a change in the game's economics fails. **When a check is about what the simulation does rather than how the source reads, put it there.** Pinning an exact calibration constant is usually the wrong instinct: assert the property the constant is meant to produce, so the number can be retuned without a false alarm.
@@ -162,6 +164,9 @@ node scripts/build-historical-data.mjs                    # full rebuild (networ
 node scripts/build-historical-data.mjs --difficulty-only  # difficulty alone
 node scripts/build-historical-data.mjs --feerates-only    # fee rates, retarget heights, halvings
 node scripts/build-historical-data.mjs --recompress       # re-encode on disk, no network
+node scripts/build-historical-data.mjs --latest-end       # print the newest complete day both sources have
+node scripts/build-historical-data.mjs --append --end=YYYY-MM-DD  # add days after the cut-off, history untouched
+node scripts/data-refresh.mjs                            # the weekly refresh: --append plus the cut-off moved in all three places
 ```
 
 Prefer the narrow modes. A full rebuild re-fetches seventeen years and can pull unrelated revisions into every series; diff each one afterwards.

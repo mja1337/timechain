@@ -7,13 +7,27 @@ import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT = resolve(ROOT, "historical-data.js");
 const START = "2009-01-03";
-const END = "2026-10-06";
+// The cut-off. DEFAULT_END is the bundled data's own cut-off, kept equal to meta.through and to
+// END in src/config/timeline.js; the weekly refresh (scripts/data-refresh.mjs) moves all three
+// together and nothing else. --end=YYYY-MM-DD or TIMECHAIN_DATA_END overrides it for one run.
+const DEFAULT_END = "2026-10-06";
+const END = resolveEnd();
 const DAY = 86_400_000;
 const METRICS = ["PriceUSD", "HashRate", "FeeTotNtv", "BlkCnt", "TxCnt", "CapMrktCurUSD"];
 const ENDPOINT = "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics";
 
 function day(date) {
   return Date.parse(`${date}T00:00:00Z`);
+}
+
+function resolveEnd() {
+  const flag = process.argv.find(arg => arg.startsWith("--end="));
+  const value = flag ? flag.slice("--end=".length) : (process.env.TIMECHAIN_DATA_END || DEFAULT_END);
+  const time = Date.parse(`${value}T00:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(time) || new Date(time).toISOString().slice(0, 10) !== value) {
+    throw new Error(`END must be a real YYYY-MM-DD date, got "${value}"`);
+  }
+  return value;
 }
 
 function dateOf(row) {
@@ -366,6 +380,77 @@ if (process.argv.includes("--feerates-only")) {
   payload.meta.transforms.retargetHeight = "block height of each difficulty retarget, one per retarget";
   console.log(`FEERATE ${payload.FEERATE.length}, FEERATE_HIGH ${payload.FEERATE_HIGH.length}, RETARGET_HEIGHT ${payload.RETARGET_HEIGHT.length} points; halvings ${payload.meta.halvings.map(h => h.utc).join(" ")}`);
   await writeFile(OUTPUT, renderBundle(payload), "utf8");
+  process.exit(0);
+}
+
+// Prints the latest COMPLETE UTC day that both sources publish: the last day before today on
+// which Coin Metrics has every metric this bundle reads and mempool.space has a daily fee-rate
+// row. Difficulty is a step function, so it needs no day of its own. Nothing is written.
+if (process.argv.includes("--latest-end")) {
+  const today = new Date().toISOString().slice(0, 10);
+  const query = new URLSearchParams({
+    assets: "btc",
+    metrics: METRICS.join(","),
+    frequency: "1d",
+    start_time: new Date(day(today) - 45 * DAY).toISOString().slice(0, 10),
+    page_size: "100",
+  });
+  const response = await fetch(`${ENDPOINT}?${query}`, { headers: { accept: "application/json" } });
+  if (!response.ok) throw new Error(`Coin Metrics returned ${response.status}: ${await response.text()}`);
+  const complete = (await response.json()).data
+    .filter(row => dateOf(row) < today && METRICS.every(metric => number(row[metric]) !== null))
+    .map(dateOf)
+    .sort();
+  const feeDays = (await fetchFeeRates())
+    .map(row => new Date(row.timestamp * 1000).toISOString().slice(0, 10))
+    .filter(date => date < today)
+    .sort();
+  if (!complete.length || !feeDays.length) throw new Error("A source has no complete day in the last 45 days");
+  const latest = [complete.at(-1), feeDays.at(-1)].sort()[0];
+  console.log(latest);
+  process.exit(0);
+}
+
+// The weekly refresh. Keeps every point on or before the bundle's current cut-off exactly as it
+// is and appends only the days after it, up to END, so a refresh cannot pull upstream revisions
+// into history; scripts/check-data-refresh.mjs then proves that. The series are still computed
+// from the full fetch so trailing means have their whole window. Halvings and the source notes
+// in meta are kept; only meta.through and meta.generated move.
+if (process.argv.includes("--append")) {
+  const existing = readFileSync(OUTPUT, "utf8");
+  const context = { window: {} };
+  vm.runInNewContext(existing, context);
+  const payload = context.window.HISTORICAL_DATA;
+  if (!payload) throw new Error("Could not read the existing bundle");
+  const previous = payload.meta.through;
+  if (day(END) <= day(previous)) throw new Error(`--append needs an END after the current cut-off ${previous}; got ${END}`);
+  const rows = await fetchRows();
+  if (!rows.length) throw new Error("Coin Metrics returned no BTC rows");
+  const feeRows = await fetchFeeRates();
+  const retargetRows = await fetchRetargets();
+  const next = {
+    PRICE: dailyPrice(rows),
+    HASH: smoothedHash(rows),
+    DIFFICULTY: difficulty(retargetRows),
+    FEES: smoothedFees(rows),
+    TX: smoothedTransactions(rows),
+    HEIGHT: heights(rows),
+    CAP: marketCap(rows),
+    FEERATE: feeRateSeries(feeRows, "avgFee_50"),
+    FEERATE_HIGH: feeRateSeries(feeRows, "avgFee_90"),
+    RETARGET_HEIGHT: retargetHeights(retargetRows),
+  };
+  const added = {};
+  for (const [key, series] of Object.entries(next)) {
+    const kept = (payload[key] || []).filter(([date]) => date <= previous);
+    const fresh = series.filter(([date]) => date > previous);
+    payload[key] = [...kept, ...fresh];
+    added[key] = fresh.length;
+  }
+  payload.meta.through = END;
+  payload.meta.generated = new Date().toISOString();
+  await writeFile(OUTPUT, renderBundle(payload), "utf8");
+  console.log(JSON.stringify({ previous, through: END, added }));
   process.exit(0);
 }
 

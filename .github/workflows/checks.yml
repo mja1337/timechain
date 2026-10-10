@@ -1,0 +1,94 @@
+# The project's test suite on every pull request and every push to main (which is live on
+# GitHub Pages). Read-only: it never writes to the repository. See docs/data-refresh.md.
+name: Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main]
+  # The weekly refresh dispatches this on its own branch: a PR opened with GITHUB_TOKEN does
+  # not trigger pull_request workflows, but a workflow_dispatch does run.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
+
+jobs:
+  checks:
+    name: Safety checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Whitespace (git diff --check)
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then base="$PR_BASE"
+          elif [ "$EVENT" = "push" ] && [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then base="$BEFORE"
+          else base="$(git merge-base origin/main HEAD)"
+          fi
+          echo "Checking whitespace in $base..HEAD"
+          git diff --check "$base" HEAD
+
+      - name: Project structure
+        run: node scripts/check-project-structure.mjs
+      - name: Historical data
+        run: node scripts/check-historical-data.mjs
+      - name: Conference stories
+        run: node scripts/check-conference-stories.mjs
+      - name: Event reactions
+        run: node scripts/check-event-reactions.mjs
+      - name: Event sources
+        run: node scripts/check-event-sources.mjs
+      - name: Notification volume
+        run: node scripts/check-notification-volume.mjs
+      - name: UI contracts
+        run: node scripts/check-ui-contracts.mjs
+      - name: Engine behaviour
+        run: node scripts/check-engine-behaviour.mjs
+
+  data-guardrails:
+    name: Data refresh guardrails
+    # Only for data refreshes (a data/* branch or the data-refresh label) and news-events PRs.
+    if: >-
+      startsWith(github.head_ref || github.ref_name, 'data/') ||
+      startsWith(github.head_ref || github.ref_name, 'events/') ||
+      contains(github.event.pull_request.labels.*.name, 'data-refresh') ||
+      contains(github.event.pull_request.labels.*.name, 'news-events')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Guardrails
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          DATA_REFRESH_BASE: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+        run: node scripts/check-data-refresh.mjs

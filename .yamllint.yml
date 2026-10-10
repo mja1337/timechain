@@ -1,0 +1,8 @@
+# yamllint settings for .github/ (workflows and issue forms).
+extends: default
+rules:
+  document-start: disable
+  line-length:
+    max: 180
+  truthy:
+    check-keys: false  # GitHub Actions' top-level `on:` key

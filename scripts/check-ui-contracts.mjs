@@ -1026,7 +1026,12 @@ assert(css.includes(".thermal-console{display:grid;grid-template-columns:repeat(
 
 const sandboxContext={};
 vm.runInNewContext(timelineSource.replace("const SANDBOX_END","var SANDBOX_END").replace("const OPERATOR_ERAS","var OPERATOR_ERAS"), sandboxContext);
-assert(sandboxContext.SANDBOX_END===4947004800000, "SANDBOX_END drifted from the intended ~100-year horizon");
+/* Pinned to the recorded cut-off, not to a timestamp: the weekly data refresh moves END forward, and
+   the horizon is meant to move with it (exactly a hundred years past the cutoff, asserted below too). */
+{
+  const recordedEnd = Date.parse(/END=Date\.parse\("([^"]+)"\)/.exec(timelineSource)?.[1]);
+  assert(Number.isFinite(recordedEnd) && sandboxContext.SANDBOX_END===recordedEnd+86_400_000*365.25*100, "SANDBOX_END drifted from the intended ~100-year horizon");
+}
 assert(sandboxContext.OPERATOR_ERAS.length===7 && sandboxContext.OPERATOR_ERAS[6].id==="frontier2", "Procedural-frontier operator era is missing or out of place");
 assert(/performance=eraPoints\/\(OPERATOR_ERAS\.length\*100\)\*\d+/.test(inline), "Operator performance subscore still divides by a hardcoded era count");
 assert(inline.includes("next>=SANDBOX_END&&state.sandbox&&!state.pendingSettlement") && inline.includes('state.endReason="sandbox-complete"'), "Sandbox continuation has no second, finite auto-end trigger");
