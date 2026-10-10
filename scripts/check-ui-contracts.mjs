@@ -2084,6 +2084,13 @@ for (const legacy of ['class="pie-legend"', 'class="pool-legend"', 'class="mp-le
   assert(!inline.includes(legacy), `A chart has gone back to a hand-rolled key (${legacy}); use chartLegendHtml()`);
 assert(inline.includes('<polyline class="${cls} forecast"') && css.includes(".energy-model-line.forecast{stroke-dasharray:5 4}"), "The tariff model's forecast runs are not drawn dashed, so its replay/forecast key describes nothing on the plot");
 assert(inline.includes('label:overlay.label||"Network hash rate",color:overlay.color||"#86c79a",style:"dash"'), "The Dashboard price chart's hash-rate key no longer matches its dashed line");
+// Phone-width charts: axis text is HTML at a fixed size beside a stretched SVG, so it is never squashed and the plot never scrolls sideways.
+{
+  const priceSrc = await readFile(new URL("src/ui/enhance/price-chart.js", root), "utf8");
+  assert(!/<text[\s>]/.test(priceSrc) && priceSrc.includes('class="chart-yaxis price-chart-yaxis"') && priceSrc.includes('class="chart-xaxis price-chart-dates"'), "The price chart draws its axis text inside the stretched SVG again (about 4px on a phone)");
+  assert(inline.includes('class="chart-yaxis energy-model-ylabels"') && inline.includes('class="chart-xaxis energy-model-xlabels"') && !css.includes("min-width:560px") && !css.includes(".energy-model-chart{overflow-x:auto}"), "The tariff model chart has a fixed minimum width or SVG axis text again, so F1-F4 scroll off a phone");
+  assert(/\.chart-yaxis span\{[^}]*font:10px/.test(css) && /\.chart-xaxis span\{[^}]*font:10px/.test(css), "Chart axis labels are smaller than 10px");
+}
 // The tariff model's monthly bill is a daily bill times days in a month, never times the millisecond month span.
 assert(!inline.includes("24*rate-credit)*month/30.4375") && inline.includes("24*rate-credit)*30.4375}"), "The six-month tariff model scales its monthly bill by a millisecond span again");
 // CASH IN THE TOPBAR. The ticker that carries "Cash available" scrolls away on a desktop and is

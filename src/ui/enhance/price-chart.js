@@ -57,43 +57,51 @@ function priceChartTicks(low,high){
   }
   return ticks.length>2?ticks:[low,Math.sqrt(low*high),high];
 }
+/* The plot is an SVG stretched to its box (hairline strokes, no text), and every label - prices, dates,
+   halvings - is HTML laid over it at a fixed 10px. Text inside a stretched 1000x300 SVG was squashed to about
+   4px on a phone. Coordinates are percentages, so HTML and SVG agree at any width. The 3x gridlines keep
+   their lines but drop their labels on a phone. */
 function priceChartSvg(){
   const series=priceChartSeries();
   if(series.length<2)return `<div class="price-chart-empty">No quoted market yet. Bitcoin had no price until a market existed to give it one.</div>`;
-  const W=1000,H=300,padL=52,padR=14,padT=14,padB=26;
+  const padT=8,padB=97;
   const times=series.map(p=>p[0]),prices=series.map(p=>p[1]);
   const t0=times[0],t1=times[times.length-1];
   const low=Math.min(...prices),high=Math.max(...prices);
   // A flat stretch would otherwise divide by zero; give it a little room either side.
   const lo=Math.max(1e-6,low*.85),hi=high*1.15;
   const logLo=Math.log(lo),logHi=Math.log(hi);
-  const x=t=>padL+(W-padL-padR)*((t-t0)/Math.max(1,t1-t0));
-  const y=v=>padT+(H-padT-padB)*(1-(Math.log(Math.max(1e-6,v))-logLo)/Math.max(1e-9,logHi-logLo));
-  const line=series.map((p,i)=>`${i?"L":"M"}${x(p[0]).toFixed(1)} ${y(p[1]).toFixed(1)}`).join("");
-  const area=`${line}L${x(t1).toFixed(1)} ${H-padB}L${x(t0).toFixed(1)} ${H-padB}Z`;
-  const ticks=priceChartTicks(lo,hi).map(v=>
-    `<line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W-padR}" y2="${y(v).toFixed(1)}"/><text x="${padL-6}" y="${(y(v)+3).toFixed(1)}" text-anchor="end">${fmtCompactUsd(v)}</text>`).join("");
+  const x=t=>100*((t-t0)/Math.max(1,t1-t0));
+  const y=v=>padT+(padB-padT)*(1-(Math.log(Math.max(1e-6,v))-logLo)/Math.max(1e-9,logHi-logLo));
+  const line=series.map((p,i)=>`${i?"L":"M"}${x(p[0]).toFixed(2)} ${y(p[1]).toFixed(2)}`).join("");
+  const area=`${line}L${x(t1).toFixed(2)} 100L${x(t0).toFixed(2)} 100Z`;
+  const tickValues=priceChartTicks(lo,hi);
+  const grid=tickValues.map(v=>`<line x1="0" y1="${y(v).toFixed(2)}" x2="100" y2="${y(v).toFixed(2)}"/>`).join("");
+  const yAxis=tickValues.map(v=>`<span class="${String(Math.round(v/Math.pow(10,Math.floor(Math.log10(v)+1e-9)))).startsWith("3")?"minor":""}" style="top:${y(v).toFixed(2)}%">${fmtCompactUsd(v)}</span>`).join("");
   /* Keep recorded halvings distinct from estimated sandbox dates. The protocol fixes
      the block interval between halvings; the future calendar is the game's model. */
-  const halvings=[];
+  const marks=[],tags=[];
   for(let i=1;i<=33;i++){
     const time=halvingTimeAt(i);
     if(time>t1)break;
     if(time<t0)continue;
-    const projected=halvingIsProjected(i),suffix=projected?" projected":"",nearRight=x(time)>W-padR-58;
-    halvings.push(`<line class="halving${suffix}" x1="${x(time).toFixed(1)}" y1="${padT}" x2="${x(time).toFixed(1)}" y2="${H-padB}"/><text class="halving-label${suffix}" x="${(x(time)+(nearRight?-4:4)).toFixed(1)}" y="${padT+9}" text-anchor="${nearRight?"end":"start"}">${projected?"halving*":"halving"}</text>`);
+    const projected=halvingIsProjected(i),suffix=projected?" projected":"",at=x(time),nearRight=at>88;
+    marks.push(`<line class="halving${suffix}" x1="${at.toFixed(2)}" y1="0" x2="${at.toFixed(2)}" y2="100"/>`);
+    // Alternate rows, so two halvings close together on a phone never print over each other.
+    tags.push(`<span class="halving-label${suffix}${nearRight?" near-right":""}${tags.length%2?" lower":""}" style="left:${at.toFixed(2)}%">${projected?"halving*":"halving"}</span>`);
   }
-  const dates=[t0,t0+(t1-t0)/2,t1].map((t,i)=>
-    `<text x="${x(t).toFixed(1)}" y="${H-6}" text-anchor="${i===0?"start":i===2?"end":"middle"}">${dateFmt(t,true)}</text>`).join("");
+  const dates=[t0,t0+(t1-t0)/2,t1].map((t,i)=>`<span class="${i===0?"start":i===2?"end":""}" style="left:${[0,50,100][i]}%">${dateFmt(t,true)}</span>`).join("");
   const last=series[series.length-1];
-  return `<svg class="price-chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Bitcoin price on a logarithmic scale from ${dateFmt(t0,true)} to ${dateFmt(t1,true)}, ${fmtUsd(low)} to ${fmtUsd(high)}">
-    <g class="grid">${ticks}</g>
-    <g class="marks">${halvings.join("")}</g>
-    <path class="area" d="${area}"/>
-    <path class="line" d="${line}"/>
-    <circle class="now" cx="${x(last[0]).toFixed(1)}" cy="${y(last[1]).toFixed(1)}" r="4"/>
-    <g class="dates">${dates}</g>
-  </svg>`;
+  return `<div class="price-chart-frame chart-frame" role="img" aria-label="Bitcoin price on a logarithmic scale from ${dateFmt(t0,true)} to ${dateFmt(t1,true)}, ${fmtUsd(low)} to ${fmtUsd(high)}">
+    <div class="chart-yaxis price-chart-yaxis" aria-hidden="true">${yAxis}</div>
+    <div class="chart-plot"><svg class="price-chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <g class="grid">${grid}</g>
+      <g class="marks">${marks.join("")}</g>
+      <path class="area" d="${area}"/>
+      <path class="line" d="${line}"/>
+    </svg>${tags.join("")}<i class="price-chart-now" style="left:${x(last[0]).toFixed(2)}%;top:${y(last[1]).toFixed(2)}%"></i></div>
+    <div class="chart-xaxis price-chart-dates" aria-hidden="true">${dates}</div>
+  </div>`;
 }
 /* The key names every mark the plot can carry in the current range - the price line, recorded
    and estimated halvings, and the "now" dot - with the swatch drawn the way the mark is. */
