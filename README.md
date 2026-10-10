@@ -85,7 +85,7 @@ GitHub Pages builds from `main`, so **every push to `main` is live within about 
 
 - **Every local asset URL carries the version** (`?v=1.2`, from `APP_VERSION`), in `index.html` and in the lazily loaded 3D scripts. Pages lets a browser keep a file for ten minutes, so without this a player could load new modules beside old ones, and the load-order rules in `ARCHITECTURE.md` mean that can throw. The structure check fails if any asset lacks the current version. Because of this, **bump `APP_VERSION` for every change that ships, hotfixes included** (`1.0`, `1.1`, ...): the bump is what makes browsers fetch the new files together. The release label (`Beta 1.2`) is `APP_STAGE` + `APP_VERSION`.
 - **Before pushing a release:** bump `APP_VERSION`, add the changelog entry and update Method, then run all four checks on the exact commit you are pushing. Check the exit codes, not just the output.
-- **The release tag** marks the build that went out: `git tag -a beta-1.0 -m "Beta 1.1"`, pushed with `git push origin beta-1.0`. Each push that ships gets its own, and rollback uses the newest.
+- **The release tag** marks the build that went out: `git tag -a beta-1.0 -m "Beta 1.0"`, pushed with `git push origin beta-1.0`. Each push that ships gets its own, and rollback uses the newest.
 - **Rolling back** without rewriting history: revert everything after the tag, then push.
 
   ```bash

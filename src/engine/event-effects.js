@@ -18,7 +18,7 @@ function applyEvent(e){
   }
   if(e.fx==="ledgerleak"){
     state.custody.exposure.push({supplier:"ledger",at:state.time,from:"2016-06-01",to:"2020-06-30",
-      source:e.source||"vendor disclosure"});
+      source:e.src||e.source||"vendor disclosure"});
     const hit=custodyExposedPurchases();
     if(hit.length)log("Your purchase is in the leaked records",
       `${hit.length} device order${hit.length===1?"":"s"} bought from Ledger in the affected window`,"custody");
