@@ -60,9 +60,7 @@ function deferSettlement(){
 
 function monthlyCost(){
   const fs=fleet(),r=region(),f=facility(),nodeW=nodePowerWatts();
-  const rate=powerRate(r,state.time);
-  const projectedWatts=fs.w*contractLoadFactor()+(state.node>=1?nodeW:0),energy=(dailyEnergyCostForWatts(projectedWatts,state.time,r)-curtailmentCreditDaily(fs.w*contractLoadFactor(),state.time,r))*30.4375;
-  const staff=staffMonthlyCost(),insurance=insuranceMonthlyCost(),internet=internetMonthlyCost(),nodeNetwork=totalNodeMonthlyOverhead();return{energy,rent:f.rent,staff,insurance,internet,nodeNetwork,total:energy+f.rent+staff+insurance+internet+nodeNetwork,rate};
+  const energyDaily=siteEnergyDaily({nodeWatts:state.node>=1?nodeW:0}),energy=energyDaily.total*30.4375,staff=staffMonthlyCost(),insurance=insuranceMonthlyCost(),internet=internetMonthlyCost(),nodeNetwork=totalNodeMonthlyOverhead();return{energy,rent:f.rent,staff,insurance,internet,nodeNetwork,total:energy+f.rent+staff+insurance+internet+nodeNetwork,rate:energyDaily.rate};
 }
 
 function blankBillLedger(){return{energy:0,rent:0,internet:0,staff:0,insurance:0,nodeNetwork:0,other:0}}
@@ -73,8 +71,7 @@ function nextSettlementDate(offset=0){const date=new Date(state.time);return Dat
 
 function settlementForecast(){
   const fs=fleet(),r=region(),f=facility(),nodeW=nodePowerWatts();
-  const rate=powerRate(r,state.time);
-  const minerWatts=state.power&&!gridCutOff()&&!state.policyLock?fs.w*contractLoadFactor():0,nodeWatts=nodeHostPowered()?nodeW:0,energyDaily=dailyEnergyCostForWatts(minerWatts+nodeWatts,state.time,r)-curtailmentCreditDaily(minerWatts,state.time,r),daily={energy:energyDaily,rent:f.rent/30.4375,internet:internetMonthlyCost()/30.4375,staff:staffMonthlyCost()/30.4375,insurance:insuranceMonthlyCost()/30.4375,nodeNetwork:totalNodeMonthlyOverhead()/30.4375,other:0};
+  const energy=siteEnergyDaily({nodeWatts:nodeHostPowered()?nodeW:0,active:state.power&&!gridCutOff()&&!state.policyLock}),daily={energy:energy.total,rent:f.rent/30.4375,internet:internetMonthlyCost()/30.4375,staff:staffMonthlyCost()/30.4375,insurance:insuranceMonthlyCost()/30.4375,nodeNetwork:totalNodeMonthlyOverhead()/30.4375,other:0};
   let cursor=new Date(state.time),days=0,month=cursor.getUTCMonth();do{cursor=new Date(cursor.getTime()+DAY);days++}while(cursor.getUTCMonth()===month);
   const accrued=accruedBillBreakdown(),breakdown={};Object.keys(accrued).forEach(key=>breakdown[key]=accrued[key]+(daily[key]||0)*days);breakdown.finance=financeInterestMonthly();const estimated=Object.values(breakdown).reduce((sum,value)=>sum+value,0),cashAfter=state.cash-estimated,coverage=estimated?Math.max(0,Math.min(100,state.cash/estimated*100)):100;
   /* HOW FAR AWAY THE MONEY IS. A shortfall is a different problem depending on where the

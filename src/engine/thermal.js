@@ -21,8 +21,8 @@ function minerWattsSplit(s=state){
     total+=h.w*air+submerged;
     room+=h.w*air+submerged*IMMERSION_ROOM_HEAT_SHARE;
   });
-  const scale=(s.skills?.includes("undervolt")?.95:1)*(s.overdrive?1.25:1);
-  return{total:total*scale,room:room*scale};
+  const scale=(s.skills?.includes("undervolt")?.95:1)*(s.overdrive?1.25:1),contract=typeof energyContractFor==="function"?energyContractFor(s):null,loadFactor=typeof contractLoadFactorAt==="function"&&contract?contractLoadFactorAt(s.time,contract):1;
+  return{total:total*scale*loadFactor,room:room*scale*loadFactor};
 }
 function activeMinerWatts(s=state){return minerWattsSplit(s).total}
 function roomHeatWatts(s=state){return minerWattsSplit(s).room}

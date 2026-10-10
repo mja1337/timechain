@@ -152,12 +152,14 @@ assert(inline.includes("function curtailmentIntensityAt("),
   "Curtailment intensity is not a pure function of time, so the tariff desk cannot price an unselected contract");
 // Curtailment calibration is asserted behaviourally: it must deepen under a shock, must pay
 // for released capacity, and must never drive the operating bill negative.
-assert(inline.includes('state.contract==="curtail"?1-curtailmentIntensity():1'),
-  "Curtailment load is a flat duty cycle again rather than tracking the energy shock");
-assert(inline.includes("-curtailmentCreditDaily(minerWatts,next,r)"),
-  "The daily operating bill does not receive the demand-response credit");
-assert(inline.includes("creditFor=c=>c.id===\"curtail\""),
-  "The energy tariff desk quotes curtailment without its credit, so contracts cannot be compared");
+assert(inline.includes("function contractLoadFactorAt(") && inline.includes("contractLoadFactorAt(s.time,contract)"),
+  "Curtailment load is not applied to the physical fleet path");
+assert(inline.includes("const energy=siteEnergyDaily({time:next") && inline.includes("energy:energy.total"),
+  "The daily operating bill does not use the shared energy ledger");
+assert(inline.includes("function siteEnergyDaily(") && inline.includes("dailyFor=c=>siteEnergyDaily({contract:c,nodeWatts:0}).total"),
+  "The energy tariff desk quotes a separate formula instead of the shared ledger");
+assert(inline.includes("function normalizeEnergyState(") && inline.includes("normalizeEnergyState(state)"),
+  "Energy state is not normalized when a save is loaded");
 assert(inline.includes("method-demand-response"), "Method does not document demand response");
 
 // TROUBLE HAS TO BE VISIBLE. A machine that needs a decision pulses; one that is simply
@@ -1093,6 +1095,7 @@ assert(inline.includes('${tip.anchor?`data-anchor="${tip.anchor}"`:""}'), "Opera
 /* The timeline moved to its own module when content.js reached the ceiling. This reads the
    whole file rather than slicing an array out of a larger one - there is nothing else in it. */
 const eventsSource = await readFile(new URL("src/data/events.js", root), "utf8");
+const storySource = await readFile(new URL("src/ui/story.js", root), "utf8");
 
 /* EVERY EVENT CARRIES ITS RECEIPT, AND THE FEED SHOWS IT.
 
@@ -1101,12 +1104,20 @@ const eventsSource = await readFile(new URL("src/data/events.js", root), "utf8")
    citations sat in the file where no player could ever reach them - data implying a behaviour
    that did not exist. The link is generic now, with genesis keeping its own wording, and an
    entry with no citation renders no link rather than an empty one. */
-assert(/\$\{feature\.url\?`<div class="story-source">/.test(renderSource),
+assert(/\$\{feature\.url\?`<div class="story-source">/.test(storySource),
   "The story feed no longer links an event to its source, or links it unconditionally");
-assert(/feature\.id==="genesis"\?"Read the Bitcoin whitepaper"/.test(renderSource),
+assert(/feature\.id==="genesis"\?"Read the Bitcoin whitepaper"/.test(storySource),
   "The genesis block lost its own wording in the story feed");
-assert(/Source: \$\{escapeHtml\(feature\.src\|\|""\)\}/.test(renderSource),
+assert(/Source: \$\{escapeHtml\(feature\.src\|\|""\)\}/.test(storySource),
   "An event's source is no longer named, or is being interpolated without escaping");
+assert(["story-latest","story-newer","story-first","story-older"].every(action=>storySource.includes(`storyNavButton(\"${action}\"`)),
+  "The story feed no longer exposes current, newer, older and beginning navigation");
+assert(storySource.includes('storyFocus==="earliest"') && storySource.includes("storyFocusIndex"),
+  "Story rereading must preserve an earliest-entry focus as the simulation advances");
+assert(storySource.includes('function storyResetFocus(){storyFocus="latest"}') && inline.includes("storyResetFocus();state.cash"),
+  "Starting a new campaign must return the story feed to its current chapter");
+assert(css.includes(".modal-body{min-height:0") && css.includes(".modal-actions{position:sticky"),
+  "Long news/tutorial modals no longer keep their primary action visible while the body scrolls");
 
 /* And the shape of the data itself, because this is the dataset most likely to be added to by
    hand. Each of these has a reason: a duplicate id silently shadows an event in state.seen, a
@@ -1876,7 +1887,7 @@ assert(inline.includes("function deferSettlement()") && inline.includes('else if
 assert(inline.includes("function gridCutOff(s=state)") && inline.includes("s.debt>0&&s.time>=(s.arrearsDue||Infinity)"), "The grace period is gone: arrears must not cut the grid until the next bill date");
 assert(inline.includes("state.arrearsDue=nextBillDate()"), "A missed bill must set the date the grid is cut if it stays unpaid");
 // Owing money and being cut off are different states, and only the second stops the site.
-for (const gate of ["function operating(){const fs=fleet();return state.power&&!gridCutOff()",
+for (const gate of ["function operating(){const fs=fleet(),site=energyFleetLoad();return state.power&&!gridCutOff()",
   "function nodeHostPowered(){if(gridCutOff()||state.policyLock)return false;",
   "function thermalPowerAvailable(s=state){return !!s.power&&!gridCutOff(s)&&"]) {
   assert(inline.includes(gate), `An operational gate still cuts the site the moment arrears exist, which removes the grace month: ${gate.slice(0, 48)}`);
@@ -1891,7 +1902,7 @@ assert(inline.includes('showToast("Power and internet cut off"'), "The disconnec
 assert(inline.includes("queueMonthlySettlement(due,month,loanInterest,silent)"), "Settlement notices must respect silent ticks, or a catch-up after the tab was hidden fires a month of toasts at once");
 assert(inline.includes('if(!silent)showToast("Settlement paused"'), "The settlement-paused toast still fires on silent catch-up ticks");
 // The forecast drives the whole cash-runway story, and miners keep running through arrears.
-assert(inline.includes("const minerWatts=state.power&&!gridCutOff()&&!state.policyLock?fs.w*contractLoadFactor():0"), "The settlement forecast assumes miners are off the moment arrears exist, understating the bill for the entire grace month");
+assert(inline.includes("siteEnergyDaily({nodeWatts:nodeHostPowered()?nodeW:0,active:state.power&&!gridCutOff()&&!state.policyLock})"), "The settlement forecast is not using the shared energy ledger through the arrears grace month");
 
 // The old thermal model compared heat to a capacity number and added a flat penalty per
 // unit of overload. Nothing in it conserved energy, so it had no gradient below capacity
@@ -2169,7 +2180,7 @@ assert(inline.includes('label:overlay.label||"Network hash rate",color:overlay.c
 }
 assert(inline.includes('<span class="era-short">${eraShortAt(state.time)}</span>') && css.includes(".era-chip strong{white-space:nowrap;") && css.includes("@container (max-width:250px){.era-chip .era-full{display:none}"), "The topbar era label can wrap again beside the cash readout");
 // The tariff model's monthly bill is a daily bill times days in a month, never times the millisecond month span.
-assert(!inline.includes("24*rate-credit)*month/30.4375") && inline.includes("24*rate-credit)*30.4375}"), "The six-month tariff model scales its monthly bill by a millisecond span again");
+assert(!inline.includes("24*rate-credit)*month/30.4375") && inline.includes("siteEnergyDaily({contract:c,time:t}).total*30.4375"), "The six-month tariff model scales its monthly bill by a millisecond span again");
 // CASH IN THE TOPBAR. The ticker that carries "Cash available" scrolls away on a desktop and is
 // hidden on a phone, so the sticky topbar carries the spendable figure on every tab, refreshed each
 // tick, in fixed-width tabular figures so it cannot jostle the clock and speed controls.

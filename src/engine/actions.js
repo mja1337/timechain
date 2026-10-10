@@ -136,8 +136,7 @@ const RESALE_HAIRCUT=.65;
 function resaleHardwareValue(h){return h.cost*hardwareMarketFactor(h)*RESALE_HAIRCUT}
 function facilityReserve(f){
   const r=region(),fs=fleet(),nodeW=nodePowerWatts();
-  const rate=powerRate(r,state.time);
-  let energy=(fs.w+nodeW)/1000*24*30.4375*rate;if(hasSkill("heat"))energy*=.96;
+  const energy=siteEnergyDaily({nodeWatts:nodeW}).total*30.4375;
   const targetTier=Math.max(1,FACILITIES.findIndex(x=>x.id===f.id)+1),scale=[1,1.5,4,15,55,150,300,600][targetTier-1]||1,internet=(r.internet||75)*connectivityPlan().mult*scale;
   return (energy+f.rent+internet+staffMonthlyCost()+insuranceMonthlyCost()+totalNodeMonthlyOverhead())*2;
 }
@@ -626,7 +625,7 @@ function venueAvailable(id){
   if(id==="etf")return state.time>=at("2024-01-10");return true;
 }
 function walletName(id){return({hot:"Node-connected hot wallet",cold:"Cold / hardware wallet",mtgox:"Mt. Gox",bitfinex:"Bitfinex",quadriga:"QuadrigaCX",frontier:"Frontier exchange",exchange:"Regulated exchange",etf:"ETF exposure",frozen:"Frozen claims"})[id]||id}
-function resetGame(){if(!confirm("Erase this run and return to the Genesis Block?"))return;state=initialState();OPERATOR_ERAS.forEach(era=>state.operator.eras[era.id]={months:0,solvent:0,profitable:0,uptime:0,competitive:0});migrateActivity(state);activeTab="dashboard";activityFilter="all";activityLimit=100;tradePercentages={};introDifficulty="medium";introStartingCash=STARTING_LIQUIDITY_DEFAULT;introStep=0;clearTimeout(faucetTimer);faucet=null;save();setTimer();render()}
+function resetGame(){if(!confirm("Erase this run and return to the Genesis Block?"))return;storyResetFocus();state=initialState();OPERATOR_ERAS.forEach(era=>state.operator.eras[era.id]={months:0,solvent:0,profitable:0,uptime:0,competitive:0});migrateActivity(state);activeTab="dashboard";activityFilter="all";activityLimit=100;tradePercentages={};introDifficulty="medium";introStartingCash=STARTING_LIQUIDITY_DEFAULT;introStep=0;clearTimeout(faucetTimer);faucet=null;save();setTimer();render()}
 function exportSave(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="timechain-save.json";a.click();URL.revokeObjectURL(url);
 }

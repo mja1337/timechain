@@ -82,7 +82,7 @@ function operatorBriefing(){
   return `<section class="card span-12 operator-briefing ${tip.tone||""}"><div class="briefing-copy"><div class="hero-kicker">Operator briefing · ${tip.label}</div><h2>${tip.title}</h2><p>${tip.copy}</p><div class="briefing-recommendation"><span>Recommended next step</span><b>${tip.recommendation}</b></div>${definitions}</div><div class="briefing-actions"><button class="action primary" data-action="${tip.action}" ${tip.value?`data-value="${tip.value}"`:""} ${tip.anchor?`data-anchor="${tip.anchor}"`:""}>${tip.button}</button><button class="action-link" data-action="dismiss-guidance" data-id="${tip.id}">Dismiss this advice</button></div></section>`;
 }
 function dashboardCommandCentre(){
-  const fs=fleet(),monthly=monthlyCost(),runway=monthly.total?state.cash/monthly.total:Infinity,load=fs.cap?fs.kw/fs.cap*100:0,margin=state.time>=MARKET?expectedDailyBtcForHash(fs.hash)*priceAt(state.time)-dailyEnergyCostForWatts(fs.w*contractLoadFactor()):null;
+  const fs=fleet(),energy=siteEnergyDaily(),monthly=monthlyCost(),runway=monthly.total?state.cash/monthly.total:Infinity,load=fs.cap?fs.kw/fs.cap*100:0,margin=state.time>=MARKET?expectedDailyBtcForHash(fs.hash)*priceAt(state.time)-energy.total:null;
   const custodyTotal=controlled()+claims(),selfShare=custodyTotal?controlled()/custodyTotal*100:100,nodeState=nodeOnline()?"At chain tip":state.node?"Offline or syncing":"Laptop node only";
   const cards=[
     {label:"How long will cash last?",value:Number.isFinite(runway)?`${runway.toFixed(1)} months`:"No fixed burn",detail:`${fmtUsd(state.cash)} cash · ${fmtUsd(monthly.total)}/month`,tone:runway<2?"critical":runway<6?"attention":"",tab:"finance",action:"Review finance"},

@@ -23,6 +23,7 @@ const expectedScripts = [
   "src/engine/connectivity.js",
   "src/engine/offline.js",
   "src/engine/thermal.js",
+  "src/engine/energy.js",
   "src/engine/fleet-ops.js",
   "src/engine/secondary.js",
   "src/engine/nodes.js",
@@ -104,6 +105,7 @@ const expectedScripts = [
   "src/ui/render.js",
   /* After render.js, whose ceremony modal it animates; before events.js. */
   "src/ui/dice-shake.js",
+  "src/ui/story.js",
   "src/app/events.js",
   "src/app/bootstrap.js",
 ];
