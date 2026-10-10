@@ -1179,7 +1179,35 @@ assert(inline.includes("function rivalLandscapeCard()") && inline.includes("RIVA
 assert(inline.includes("function milestonesLedgerSection()") && inline.includes("${milestonesLedgerSection()}"), "Milestone list is missing from the Ledger tab");
 assert(inline.includes("const WALLET_SOFTWARE=[") && inline.includes('id:"modern"') && inline.includes("function walletSoftwareTierAt("), "Wallet software lineage data or tier-lookup helper is missing");
 assert(inline.includes("function rollDie()") && inline.includes("crypto.getRandomValues"), "Dice-roll entropy ceremony is not using real browser randomness");
-assert(inline.includes("function recordDieRoll(value)") && inline.includes("wallet-paper-recorded") && inline.includes("wallet-paper-destroyed") && inline.includes("wallet-oath") && inline.includes("data-dice-face"), "The key ceremony no longer teaches physical dice, temporary paper handling and the key-holder oath");
+assert(inline.includes("wallet-paper-recorded") && inline.includes("wallet-paper-destroyed") && inline.includes("wallet-oath"), "The key ceremony no longer teaches temporary paper handling and the key-holder oath");
+// THE CEREMONY DIE. Press and hold to shake, release to roll; the player never chooses the face.
+{
+  const dice = await readFile(new URL("src/ui/dice-shake.js", root), "utf8");
+  const diceCode = dice.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
+  // No face-picking control remains anywhere: no per-face buttons, no typed face, no action that records a chosen value.
+  assert(!/dice-record|data-dice-face|die-choice|recordDieRoll/.test(inline + css), "A control that lets the player pick the die's face is still in the game");
+  assert(/data-dice-roller/.test(inline) && (inline.match(/data-dice-roller aria-describedby/g) || []).length === 1, "The ceremony has no single die to press and hold");
+  // The face comes from rollDie(), which takes nothing from the player, and the release passes it nothing: hold time is animation only.
+  assert(/function rollDie\(\)\{[\s\S]{0,200}const face=secureDice\(1\)\[0\];/.test(inline) && /const face=rollDie\(\);/.test(dice) && (diceCode.match(/rollDie\(/g) || []).length === 1,
+    "The die's face is not drawn by rollDie() from secureDice at release, or the release can pass it something (hold time must not reach the result)");
+  assert(!/nextRand\(|Math\.random\(/.test(dice), "The ceremony die draws from the game's seeded stream or Math.random");
+  // Input: pointer (mouse/touch/pen) and keyboard hold; touch holds neither scroll nor open a menu.
+  for (const ev of ['"pointerdown"', '"pointerup"', '"pointercancel"', '"contextmenu"', '"keydown"', '"keyup"']) assert(dice.includes(`addEventListener(${ev}`), `The ceremony die does not listen for ${ev}`);
+  assert(/\.die-roller\{[^}]*touch-action:none[^}]*-webkit-touch-callout:none/.test(css) && /\.dice-stage\{[^}]*height:156px/.test(css), "Holding the die on a phone can scroll the page or open a menu, or its box is not fixed (layout shift)");
+  // Reduced motion: no shake transform, a short flicker instead; and the result is announced in a live region outside #app.
+  assert(/rm:diceReducedMotion\(\)/.test(dice) && /if\(!diceAnim\.rm\)requestAnimationFrame\(diceShakeFrame\)/.test(dice) && /@media\(prefers-reduced-motion:reduce\)\{\.die-roller\.is-tumbling \.die-svg/.test(css) && css.includes("@keyframes die-flicker"),
+    "The ceremony die has no reduced-motion path");
+  assert(/aria-live","polite"/.test(dice) && /document\.body\.appendChild\(live\)/.test(dice) && inline.includes("Press and hold to shake, release to roll"), "The roll is not announced, or the die has no instruction");
+  // Played headlessly: rollDie() takes no input, gives 1-6, never touches the seeded stream, and over many throws every face turns up.
+  const { loadEngine, makeEval } = await import("./engine-harness.mjs");
+  const diceSb = loadEngine(); diceSb.crypto = globalThis.crypto; // the harness zero-fills crypto for repeatability; use the real one here
+  const dev = makeEval(diceSb);
+  dev(`state=initialState();state.started=true;state.rng=777;state.walletSetup={done:false,step:1,rolls:[],keyHex:"",required:true};`);
+  const r = JSON.parse(dev(`(()=>{const seen=[0,0,0,0,0,0,0];for(let i=0;i<99;i++)seen[rollDie()]++;const over=rollDie();
+      state.walletSetup.rolls=[];for(let n=0;n<6;n++){for(let i=0;i<99;i++)seen[rollDie()]++;state.walletSetup.rolls=[]}
+      return JSON.stringify({len:rollDie.length,seen,over,rng:state.rng})})()`));
+  assert(r.len === 0 && r.over === 0 && r.seen[0] === 0 && r.seen.slice(1).every(n => n > 60) && r.rng === 777, `The ceremony die is not a fair, input-free, seed-free throw: ${JSON.stringify(r)}`);
+}
 assert(inline.includes("function walletSetupModal()") && inline.includes("state.started&&!state.walletSetup.done?walletSetupModal()"), "Wallet-setup ceremony is not wired into the modal stack");
 assert(inline.includes('log(`Upgraded to ${tier.name}`,"+1 skill point","milestone")') && inline.includes('showToast(`Upgraded to ${tier.name}`') , "Wallet-software upgrades do not use the milestone reward convention");
 assert(!inline.includes('"Bitcoin Core runs on the Basic laptop') && !inline.includes('"Bitcoin Core shares the mining laptop"'), "Wallet-client copy is still hardcoded to Bitcoin Core regardless of the in-game date");

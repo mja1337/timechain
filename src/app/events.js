@@ -38,9 +38,7 @@ document.getElementById("app").addEventListener("click",e=>{
   else if(a==="intro-back"){introStep=Math.max(0,introStep-1);render()}
   else if(a==="wallet-demo"){state.walletSetup={done:false,step:0,rolls:[],keyHex:"",demo:true,resumeSpeed:state.speed};state.speed=0;save();setTimer();render()}
   else if(a==="wallet-setup-start"){state.walletSetup.step=1;save();render()}
-  else if(a==="dice-roll")rollDie();
-  else if(a==="dice-record")recordDieRoll(v||document.querySelector("[data-dice-face]")?.value);
-  else if(a==="dice-finish")finishRolling();
+  else if(a==="dice-finish"){if(typeof diceBusy==="function"&&diceBusy())return;finishRolling()}
   else if(a==="wallet-paper-recorded")recordWalletPaper();
   else if(a==="wallet-paper-destroyed")destroyWalletPaper();
   else if(a==="wallet-oath")takeWalletOath();

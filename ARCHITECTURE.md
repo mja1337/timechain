@@ -62,6 +62,7 @@
 - `src/ui/custody-map/state.js` - the derived custody view model shared by the future Three.js map, its accessible fallback and its detail panel. It separates money location, spending approval and network verification without creating another game-state store.
 - `src/ui/live.js` - the cheap per-tick DOM patches for the header, charts and live tab panels; presentation rather than simulation.
 - `src/ui/render.js` - modal, sidebar and application-shell rendering.
+- `src/ui/dice-shake.js` - the wallet ceremony's die: press and hold (pointer or Space/Enter) to shake, harder the longer it is held; release to tumble and land. The face is drawn by `rollDie()` (engine, `secureDice` / `crypto.getRandomValues`) at release and never depends on hold time; the dice feed only the illustrative key, never the seeded world. Reduced motion swaps shake and tumble for a short flicker; the result is announced in a live region outside `#app`.
 - `src/app/events.js` - delegated DOM events.
 - `src/app/bootstrap.js` - compatibility adjustments and startup.
 - `src/styles/app.css` - all application styling and responsive rules.
