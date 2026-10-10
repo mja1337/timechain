@@ -2,7 +2,7 @@
 
 > A game-first history of Bitcoin, from the Genesis Block to today. Start with one computer. Mine, keep your keys safe and stay solvent as the technology, the network and the world change.
 
-**Beta 1.0** · plays in the browser, free, no account · live at https://mja1337.github.io/timechain/
+**Beta 1.1** · plays in the browser, free, no account · live at https://mja1337.github.io/timechain/
 
 ## What you do
 
@@ -81,9 +81,9 @@ The first three suites match source text (the engine-behaviour suite does not). 
 
 GitHub Pages builds from `main`, so **every push to `main` is live within about 40 seconds**. Nothing else stands between a commit and a player.
 
-- **Every local asset URL carries the version** (`?v=1.0`, from `APP_VERSION`), in `index.html` and in the lazily loaded 3D scripts. Pages lets a browser keep a file for ten minutes, so without this a player could load new modules beside old ones, and the load-order rules in `ARCHITECTURE.md` mean that can throw. The structure check fails if any asset lacks the current version. Because of this, **bump `APP_VERSION` for every change that ships, hotfixes included** (`1.0`, `1.1`, ...): the bump is what makes browsers fetch the new files together. The release label (`Beta 1.0`) is `APP_STAGE` + `APP_VERSION`.
+- **Every local asset URL carries the version** (`?v=1.1`, from `APP_VERSION`), in `index.html` and in the lazily loaded 3D scripts. Pages lets a browser keep a file for ten minutes, so without this a player could load new modules beside old ones, and the load-order rules in `ARCHITECTURE.md` mean that can throw. The structure check fails if any asset lacks the current version. Because of this, **bump `APP_VERSION` for every change that ships, hotfixes included** (`1.0`, `1.1`, ...): the bump is what makes browsers fetch the new files together. The release label (`Beta 1.1`) is `APP_STAGE` + `APP_VERSION`.
 - **Before pushing a release:** bump `APP_VERSION`, add the changelog entry and update Method, then run all four checks on the exact commit you are pushing. Check the exit codes, not just the output.
-- **The release tag** marks the build that went out: `git tag -a beta-1.0 -m "Beta 1.0"`, pushed with `git push origin beta-1.0`. Each push that ships gets its own, and rollback uses the newest.
+- **The release tag** marks the build that went out: `git tag -a beta-1.0 -m "Beta 1.1"`, pushed with `git push origin beta-1.0`. Each push that ships gets its own, and rollback uses the newest.
 - **Rolling back** without rewriting history: revert everything after the tag, then push.
 
   ```bash
@@ -290,6 +290,12 @@ Use this checklist for every rewritten surface:
 - Does the copy use the canonical terminology in this document?
 
 ## Change discipline
+
+The Beta 1.1 custody workshop connects its floor, four build choices, quantities and progress to actual game state. New signers are inspected and their signing software prepared before key generation. Existing devices without the new setup marker retain their working status. The former `beigepc` ID remains valid in saves, but new purchases are paid Basic PCs; replacement computers are normal purchases too. Small-form-factor computers and Raspberry Pi kits are complete SKUs, with the Pi gated to its [29 February 2012 launch](https://www.raspberrypi.com/news/happy-birthday-2018/). Catalogue prices are gameplay assumptions.
+
+The reserve health figure is a setup checklist, capped at 85 while recovery rehearsal is unavailable. The location review counts distinct keys and recovery copies by site, normalises Home and the mine when they are the same building, and uses real movement delays. Nodes group Bitcoin verification with Lightning guidance while retaining the existing sync, storage and routing model. Client selections record the preparation workflow; they do not claim a measured real-world risk reduction.
+
+Readable backups at a trusted person's house have a fictional betrayal baseline equal to that location's flood rate: 0.06% per simulated month. Copying exposes the secret while leaving hardware and recovery material intact. Theft requires enough distinct secrets to satisfy the wallet policy; online-wallet recovery is handled separately. Bank deposit boxes and locked signer hardware alone do not trigger this friend-access roll. Collecting a copied seed cannot revoke it: rotation changes the spending authority.
 
 - Rewrite one player journey or surface at a time.
 - Preserve simulation behaviour unless a separate mechanic change is explicitly approved.

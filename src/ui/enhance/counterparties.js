@@ -7,17 +7,17 @@
    blocks, because a rung the player cannot see how to climb is just a number. */
 
 const POSTURE_COPY={
-  none:"Nobody will price a risk on this. There is no wallet that can sign, or one that could not be rebuilt if a signer were lost.",
-  basic:"It can sign and it can be rebuilt. That is the minimum anybody will look at, and the least they will pay for.",
-  strong:"Nothing about it is a known weakness. This is what a lender or an insurer wants to see before they offer their best terms.",
-  audited:"Strong, and somebody independent has looked within the last year. The best terms there are."
+  none:"The reserve's spending policy or recovery plan is incomplete. This assessment concerns the cold reserve; your online wallet can still have its own working key. The findings below explain what is missing.",
+  basic:"The reserve has its required keys and recorded recovery material. Other weaknesses remain: read the findings below before relying on the setup. The game uses this level to calculate lending and theft-cover terms.",
+  strong:"The setup passes the game's current checks for keys, backups and locations. That improves lending and theft-cover terms in the simulation. It does not prove the setup can survive every theft, mistake or equipment failure.",
+  audited:"The setup passes the game's checks and has a current audit certificate. The certificate affects lending and theft-cover terms; it does not guarantee that the coins are safe. A later change can introduce a new weakness."
 };
 function postureTone(tier){return tier==="none"?"high":tier==="basic"?"medium":"low"}
 
 function custodyPostureSection(){
   const p=custodyPosture();
-  const rows=p.findings.map(f=>`<li><b class="${f.blocks==="basic"?"profit-negative":""}">${f.blocks==="basic"?"Blocks basic":"Blocks strong"}</b> · ${f.text}</li>`).join("");
-  return `<div class="risk ${postureTone(p.tier)}">Posture: ${p.tier}${p.tier==="audited"?` until ${dateFmt(custodyAuditUntil())}`:""}</div>
+  const rows=p.findings.map(f=>`<li><b class="${f.blocks==="basic"?"profit-negative":""}">${f.blocks==="basic"?"Spending or recovery incomplete":"Additional weakness"}</b> · ${f.text}</li>`).join("");
+  return `<div class="risk ${postureTone(p.tier)}">Game assessment: ${custodyAssessmentLabel(p.tier)}${p.tier==="audited"?` until ${dateFmt(custodyAuditUntil())}`:""}</div>
     <p class="modal-note">${POSTURE_COPY[p.tier]}</p>
     ${rows?`<ul class="posture-findings">${rows}</ul>`:""}`;
 }
@@ -42,7 +42,7 @@ function custodyCoverSection(){
   const excluded=Object.values(COVER_EXCLUDED).map(t=>`<li>${t}</li>`).join("");
   const status=cover
     ?`<div class="risk ${state.time<cover.since+COVER_WAIT_DAYS*DAY?"medium":"low"}">Cover bound ${dateFmt(cover.since)} · ${fmtUsd(coinCoverPremium())} a month${state.time<cover.since+COVER_WAIT_DAYS*DAY?` · pays from ${dateFmt(cover.since+COVER_WAIT_DAYS*DAY)}`:""}</div>`
-    :quote?`<p class="modal-note">At a <b>${p.tier}</b> posture, cover would cost about <b>${fmtUsd(quote.premium)}</b> a month and pay <b>${Math.round(quote.pays*100)}%</b> of a covered theft, from thirty days after it is bound. A better posture is cheaper and pays more.</p>`:"";
+    :quote?`<p class="modal-note">With your current key and recovery assessment, cover would cost about <b>${fmtUsd(quote.premium)}</b> a month and pay <b>${Math.round(quote.pays*100)}%</b> of a covered theft, from thirty days after it is bound. Addressing the findings can reduce the premium and increase the covered share.</p>`:"";
   return `<h4>Cover against theft</h4>${status}
     <div class="actions"><button class="action small ${cover?"":reason?"":"primary"}" data-action="custody-cover" ${!cover&&reason?`disabled title="${escapeHtml(reason)}"`:""}>${cover?"Cancel cover":"Bind cover"}</button></div>
     ${!cover&&reason?`<p class="modal-note">${reason}</p>`:""}
@@ -89,6 +89,6 @@ function custodyLoanSection(){
 }
 
 function custodyCounterpartiesCard(){
-  return `<section class="card span-12 custody-counterparties"><div class="card-head"><h2>What lenders and insurers see</h2><div class="meta">${custodyPosture().tier.toUpperCase()} POSTURE</div></div>
+  return `<section class="card span-12 custody-counterparties"><div class="card-head"><h2>What lenders and insurers see</h2><div class="meta">GAME ASSESSMENT</div></div>
     <div class="card-pad">${custodyPostureSection()}${custodyAuditSection()}${custodyCoverSection()}${custodyLoanSection()}</div></section>`;
 }

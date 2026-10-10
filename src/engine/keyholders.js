@@ -58,7 +58,7 @@ function setKeyHolder(keyId,role){
   key.knownBy=[...custodyKnownBy(key)];
   key.holder=role;
   log(`Key ${key.label} now held by ${custodyHolderName(role)}`,was==="owner"?"Was held by you":`Was held by ${custodyHolderName(was)}, who still knows it`,"custody");
-  showToast("Key handed over",`${custodyHolderName(role)} now holds ${key.label}.${was!=="owner"?` ${custodyHolderName(was)} still knows it, so dismissing them would still expose it.`:""}`,"info","custody");
+  showToast("Key handed over",`${custodyHolderName(role)} now holds ${key.label}. You are delegating one part of the power to spend. A change in employment cannot erase a secret someone has learned.${was!=="owner"?` ${custodyHolderName(was)} still knows it, so dismissing them would still expose it.`:""}`,"info","custody");
   save();render();
 }
 /* A technician who is busy on a repair crew is not free to sign. */
@@ -201,7 +201,7 @@ function wipeCustodySigner(keyId){
   const device=state.custody.devices.find(d=>d.keyId===keyId&&!d.destroyed),key=custodyKey(keyId);
   device.keyId=null;
   log(`Wiped the signer that held ${key.label}`,"It can hold a new key again","custody");
-  showToast("Signer wiped",`${key.label} is gone from the device. It is a spare again, and can take a replacement key.`,"success","custody");
+  showToast("Signer wiped",`${key.label} is removed from this device, which can now hold a replacement key. Its backup and any other copies still exist: wiping hardware does not erase a secret everywhere it has been copied.`,"success","custody");
   save();render();
 }
 function advanceRotation(silent=false){
@@ -215,6 +215,6 @@ function advanceRotation(silent=false){
   utxoState().cold=(state.wallets.cold||0)>0?1:0;
   c.rotation=null;
   log(`Rotated to ${fresh?fresh.label:"a new key"}`,`${old?old.label:"The old key"} retired · coins consolidated into one`,"custody");
-  if(!silent)showToast("Rotation complete",`${old?old.label:"The old key"} no longer controls anything. ${custodyPolicy(c.policy).threshold>1?"Record the wallet configuration again, and back the new key up. ":"Back the new key up. "}The coins are now a single coin, which is the cheapest thing to spend.`,"success","custody");
+  if(!silent)showToast("Rotation complete",`${old?old.label:"The old key"} no longer controls anything. ${custodyPolicy(c.policy).threshold>1?"Record the wallet configuration again, and back the new key up. ":"Back the new key up. "}The funds now use the replacement wallet. Changing who can spend required moving the coins; deleting an old copy alone could not revoke that authority.`,"success","custody");
   renderFullQueued=true;
 }

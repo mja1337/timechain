@@ -1426,7 +1426,7 @@ rule("three devices holding one seed are still one key", () => {
     ${CUSTODY_SITE(`state.time=at("2021-02-01");`)}
     for(let i=0;i<3;i++)orderCustodyProduct("jade",1);
     for(let i=0;i<16;i++)tick();
-    generateCustodyKey(state.custody.devices[0].uid);
+    (()=>{inspectWorkshopDevice(state.custody.devices[0].uid);prepareWorkshopDevice(state.custody.devices[0].uid);generateCustodyKey(state.custody.devices[0].uid)})();
     const seed=state.custody.keys[0];
     restoreCustodyKey(state.custody.devices[1].uid,seed.id);
     restoreCustodyKey(state.custody.devices[2].uid,seed.id);
@@ -1447,7 +1447,7 @@ rule("a quorum wallet needs its configuration, not just its seeds", () => {
     for(let i=0;i<3;i++)orderCustodyProduct("jade",1);
     orderCustodyProduct("steelplate",3);
     for(let i=0;i<20;i++)tick();
-    for(const d of state.custody.devices)generateCustodyKey(d.uid);
+    for(const d of state.custody.devices)(()=>{inspectWorkshopDevice(d.uid);prepareWorkshopDevice(d.uid);generateCustodyKey(d.uid)})();
     for(const k of state.custody.keys){assignCustodyKey(k.id);backupCustodyKey(k.id,"steelplate")}
     const withoutConfig={loss:custodyLossRisk(),recoverable:custodyRecoverable()};
     backupCustodyConfig();
@@ -1470,7 +1470,7 @@ rule("buying equipment protects nothing until it is configured", () => {
     orderCustodyProduct("jade",1);
     for(let i=0;i<16;i++)tick();
     const owned=custodyCompromiseFactor();
-    generateCustodyKey(state.custody.devices[0].uid);
+    (()=>{inspectWorkshopDevice(state.custody.devices[0].uid);prepareWorkshopDevice(state.custody.devices[0].uid);generateCustodyKey(state.custody.devices[0].uid)})();
     const keyed=custodyCompromiseFactor();
     assignCustodyKey(state.custody.keys[0].id);
     const assigned=custodyCompromiseFactor();
@@ -1510,7 +1510,7 @@ rule("a guessable seed is a property of the key, and a quorum survives one of th
       state.time=at(when);orderCustodyProduct(product,1);
       for(let i=0;i<18;i++)tick();
       const d=state.custody.devices.find(x=>x.product===product);
-      generateCustodyKey(d.uid);
+      (()=>{inspectWorkshopDevice(d.uid);prepareWorkshopDevice(d.uid);generateCustodyKey(d.uid)})();
       return !!state.custody.keys[0].weakEntropy;
     };
     const drained=(build)=>{
@@ -1529,15 +1529,15 @@ rule("a guessable seed is a property of the key, and a quorum survives one of th
       beforeWindow:born("coldcard","2019-01-01"),
       inWindow:born("coldcardmk4","2022-06-01"),
       differentVendor:born("jade","2022-06-01"),
-      singleWeak:drained(()=>{const d=own("coldcardmk4","2022-06-01");generateCustodyKey(d.uid);
+      singleWeak:drained(()=>{const d=own("coldcardmk4","2022-06-01");(()=>{inspectWorkshopDevice(d.uid);prepareWorkshopDevice(d.uid);generateCustodyKey(d.uid)})();
         assignCustodyKey(state.custody.keys[0].id)}),
-      singleSound:drained(()=>{const d=own("jade","2022-06-01");generateCustodyKey(d.uid);
+      singleSound:drained(()=>{const d=own("jade","2022-06-01");(()=>{inspectWorkshopDevice(d.uid);prepareWorkshopDevice(d.uid);generateCustodyKey(d.uid)})();
         assignCustodyKey(state.custody.keys[0].id)}),
       quorumOneWeak:drained(()=>{setCustodyPolicy("2of3");
-        for(const p of ["coldcardmk4","jade","bitbox02"]){const d=own(p,"2022-06-01");generateCustodyKey(d.uid)}
+        for(const p of ["coldcardmk4","jade","bitbox02"]){const d=own(p,"2022-06-01");(()=>{inspectWorkshopDevice(d.uid);prepareWorkshopDevice(d.uid);generateCustodyKey(d.uid)})()}
         for(const k of state.custody.keys)assignCustodyKey(k.id);backupCustodyConfig()}),
       quorumTwoWeak:drained(()=>{setCustodyPolicy("2of3");
-        for(const p of ["coldcardmk4","coldcard","jade"]){const d=own(p,"2022-07-01");generateCustodyKey(d.uid)}
+        for(const p of ["coldcardmk4","coldcard","jade"]){const d=own(p,"2022-07-01");(()=>{inspectWorkshopDevice(d.uid);prepareWorkshopDevice(d.uid);generateCustodyKey(d.uid)})()}
         for(const k of state.custody.keys)assignCustodyKey(k.id);backupCustodyConfig()}),
     };})()`);
   const lost = x => x.before - x.after > 0.01;
@@ -1794,6 +1794,33 @@ const PLACED_WALLET = (policy, keys, configPlace = "bank") => `
     state.custody.assigned.push(id);
   });
   state.custody.configBackedUp=true;state.custody.configPlace="${configPlace}";`;
+
+rule("friend betrayal is flood-rare, conditional on readable backups and absent from bank boxes", () => {
+  const r=json(`(()=>{
+    ${CUSTODY_SITE(`state.time=at("2021-02-01");state.facility="warehouse";`)}
+    ${PLACED_WALLET("single", [{device:"trusted",backup:"bank",steel:true}])}
+    const flood=placeRate("trusted","flood"),betrayal=placeRate("trusted","betrayal"),rand=state.rand;
+    applyPlaceIncident("trusted","betrayal",state.time,true);applyPlaceIncident("bank","betrayal",state.time,true);
+    return {flood,betrayal,bank:placeRate("bank","betrayal"),readable:trustedReadableBackups("trusted").length,exposed:!!state.custody.keys[0].exposed,destroyed:!!state.custody.devices[0].destroyed,rand:state.rand===rand};})()`);
+  assert(r.betrayal>0&&r.betrayal<.001&&r.betrayal===r.flood,"friend betrayal no longer matches the small flood baseline");
+  assert(r.bank===0&&r.readable===0&&!r.exposed&&!r.destroyed&&r.rand,"a locked signer or bank backup triggered friend-access damage");
+});
+
+rule("a friend can copy paper or steel without destroying it, but must know a distinct signing quorum to steal", () => {
+  const incident=(count,duplicate=false)=>json(`(()=>{
+    ${CUSTODY_SITE(`state.time=at("2021-02-01");state.facility="warehouse";state.wallets.cold=10;state.wallets.hot=0;`)}
+    ${PLACED_WALLET("2of3", [{device:"site",backup:"trusted",steel:false},{device:"home",backup:count>1?"trusted":"bank",steel:true},{device:"bank",backup:"bank",steel:true}])}
+    ${duplicate?'state.custody.keys[1].seed=state.custody.keys[0].seed;':''}
+    const before=state.wallets.cold,rand=state.rand;
+    applyPlaceIncident("trusted","betrayal",state.time,true);
+    const after=state.wallets.cold;applyPlaceIncident("trusted","betrayal",state.time,true);
+    return {before,after,again:state.wallets.cold,exposed:state.custody.keys.filter(k=>k.exposed).length,backups:state.custody.keys.every(k=>!k.backup.destroyed),devices:state.custody.devices.every(d=>!d.destroyed),config:state.custody.configBackedUp,rand:state.rand===rand,cause:pendingLoss()?.cause};})()`);
+  const one=incident(1),two=incident(2),clones=incident(2,true);
+  assert(one.after===one.before&&one.exposed===1,"one copied seed spent a 2-of-3 reserve");
+  assert(two.after<two.before&&two.after>0&&two.cause==="betrayal","two distinct copied seeds did not expose the reserve quorum");
+  assert(clones.after===clones.before,"two copies of one seed counted as two independent signatures");
+  for(const r of [one,two,clones])assert(r.backups&&r.devices&&r.config&&r.rand&&r.again===r.after,"betrayal destroyed physical items, rerolled a known secret or changed the random stream");
+});
 
 rule("a backup beside the signer is one point of failure, and the wallet says so", () => {
   const r = json(`(()=>{
@@ -3137,7 +3164,7 @@ rule("key backups reduce the risk, and a configured wallet reduces it further", 
     setCustodyPolicy("2of3");
     for(let i=0;i<3;i++)orderCustodyProduct("jade",1);
     for(let i=0;i<16;i++)tick();
-    for(const d of state.custody.devices)generateCustodyKey(d.uid);
+    for(const d of state.custody.devices)(()=>{inspectWorkshopDevice(d.uid);prepareWorkshopDevice(d.uid);generateCustodyKey(d.uid)})();
     for(const k of state.custody.keys)assignCustodyKey(k.id);
     state.wallets={hot:100,cold:100,mtgox:0,exchange:0,frozen:0,bitfinex:0,quadriga:0,etf:0,frontier:0};
     out.configured=hotWalletIncidentRisk();
@@ -4081,6 +4108,16 @@ rule("a break-in takes the computer and what it can reach, and a stolen backup i
   assert(b.hot < b.hot1 && b.cause === "seizure", `a seized backup was not a stolen key: ${JSON.stringify(b)}`);
 });
 
+rule("a friend copying online-wallet recovery material steals only that wallet and replaces its exposed key", () => {
+  const r=json(`(()=>{${HOT_RUN(false)}
+    const key=hotKey(),id=key.id,before=state.wallets.hot;
+    key.backup={product:"steelplate",durability:"steel",at:0,place:"trusted"};
+    applyPlaceIncident("trusted","betrayal",state.time,true);
+    const loss=lossQueue().slice(-1)[0];
+    return {before,after:state.wallets.hot,replaced:hotKey().id!==id,retired:!!key.retired,backupIntact:!key.backup.destroyed,cause:loss?.cause};})()`);
+  assert(r.after<r.before&&r.after>0&&r.replaced&&r.retired&&r.backupIntact&&r.cause==="betrayal","copied online-wallet recovery was not handled as a secret exposure");
+});
+
 rule("the computer can fail on any month, only while there is something in it, and the roll never touches the shared random stream", () => {
   const r = json(`(()=>{${HOT_RUN(false)}
     const fresh=()=>{state.custody.keys=[];state.custody.hotKeyId=null;state.wallets.hot=10;state.lossQueue=[];createHotWallet({keyHex:"abcdef0123456789"})};
@@ -4522,7 +4559,7 @@ rule("the fourth halving lands on its UTC day, 20 April 2024, not the 19th", () 
 
 /* ---- COLD STORAGE FROM THE FIRST DAY ---- */
 
-rule("cold storage can be set up on day one from the old PC in the basement, and nowhere sooner than a signer exists", () => {
+rule("cold storage starts with a paid Basic PC and prepared signer, and refuses deposits before keys exist", () => {
   const read = makeEval(loadEngine());
   read(`${SITE(`state.time=at("2009-02-01");state.campaignStart=at("2009-01-03");state.wallets.hot=100;state.wallets.cold=0;state.cash=1000;`)}
     state.custody=blankCustody();`);
@@ -4531,11 +4568,12 @@ rule("cold storage can be set up on day one from the old PC in the basement, and
   read('transfer("hot","cold",.5)');
   assert(read("state.wallets.cold") === 0 && read("state.wallets.hot") === 100, "coins were moved to a wallet nobody can sign for");
   read('orderCustodyProduct("beigepc",1)');
-  assert(read("state.cash") === 1000, "the PC from the basement cost money");
+  assert(read("state.cash") === 825, "the first Basic PC was not charged");
   read('orderCustodyProduct("beigepc",1)');
-  assert(read("state.custody.orders.length") === 1, "there was more than one old PC in the basement");
+  assert(read("state.custody.orders.length") === 2 && read("state.cash") === 650, "a second Basic PC was not charged separately");
   read("state.time+=2*DAY;advanceCustodyOrders(state.time)");
-  assert(read("state.custody.devices.length") === 1, "the old PC never arrived");
+  assert(read("state.custody.devices.length") === 2, "the purchased computers never arrived");
+  read("inspectWorkshopDevice(state.custody.devices[0].uid);prepareWorkshopDevice(state.custody.devices[0].uid)");
   read("generateCustodyKey(state.custody.devices[0].uid)");
   read('backupCustodyKey(state.custody.keys.find(k=>!k.hot).id,"paperbackup")');
   read("assignCustodyKey(state.custody.keys.find(k=>!k.hot).id)");
@@ -4564,23 +4602,35 @@ rule("a custody loss says how likely it was, and what would have lowered it", ()
     for(let i=0;i<20000&&!lossQueue().length;i++){state.wallets.hot=100;advanceHotWalletRisk()}`);
   assert(read("lossQueue().length") > 0, "no hot-wallet incident was produced to read");
   const text = read("lossQueue()[0].oddsText");
-  assert(/How likely was this\? About 1 in [\d,]+ in the month it happened \(\d/.test(text), `the loss carried no odds: "${text}"`);
+  assert(/In the game model, this was about 1 in [\d,]+ in the month it happened \(\d/.test(text), `the loss carried no odds: "${text}"`);
   assert(/cold storage/.test(text) && /over a year/.test(text), `the odds did not say what would have lowered them: "${text}"`);
   assert(read('lossOddsText({monthly:0})') === "" && read("lossOddsText(null)") === "", "an incident with no stated chance printed one");
 });
 
-rule("a PC that burnt can be put together again from spare parts, free, in a day, and a working one is still only the one", () => {
-  const read = makeEval(loadEngine());
-  read(`${SITE(`state.time=at("2009-02-01");state.campaignStart=at("2009-01-03");state.cash=500;`)}
-    state.custody=blankCustody();orderCustodyProduct("beigepc",1);state.time+=2*DAY;advanceCustodyOrders(state.time);`);
-  assert(read("custodyOnceBlocked(custodyProduct('beigepc'))") === true, "a second old PC could be fetched while the first still worked");
-  read("state.custody.devices[0].destroyed={at:state.time,cause:'fire'}");
-  assert(read("custodyOnceBlocked(custodyProduct('beigepc'))") === false, "a PC that burnt could not be replaced");
-  assert(/spare parts/.test(read("custodyAcquireLabel(custodyProduct('beigepc'))")), "the replacement is not described as coming from spare parts");
+rule("replacement Basic PCs are normal paid purchases and insufficient cash cannot place an order", () => {
+  const read=makeEval(loadEngine());
+  read(`${SITE(`state.time=at("2009-02-01");state.cash=500;`)}state.custody=blankCustody();orderCustodyProduct("beigepc",1);state.time+=2*DAY;advanceCustodyOrders(state.time);`);
+  assert(read("state.cash")===325,"the first computer was free");
+  assert(!read("custodyOnceBlocked(custodyProduct('beigepc'))"),"a working computer blocked another purchase");
+  read("state.custody.devices[0].destroyed={at:state.time,cause:'fire'};orderCustodyProduct('beigepc',1)");
+  assert(read("state.cash")===150&&read("state.custody.orders.length")===1,"a replacement was free or not ordered");
   read("orderCustodyProduct('beigepc',1)");
-  assert(read("state.cash") === 500 && read("state.custody.orders.length") === 1, "the replacement cost money or was not ordered");
-  read("state.time+=2*DAY;advanceCustodyOrders(state.time)");
-  assert(read("state.custody.devices.filter(d=>!d.destroyed).length") === 1, "the replacement never arrived");
+  assert(read("state.cash")===150&&read("state.custody.orders.length")===1,"insufficient cash created another order");
+});
+
+rule("new signers require preparation, while legacy keyed devices and distinct-site recovery remain compatible", () => {
+  const read=makeEval(loadEngine());
+  read(`${SITE(`state.time=at("2021-02-01");state.facility="warehouse";`)}state.custody=blankCustody();receiveCustodyOrder({id:"beigepc",qty:1},state.time);`);
+  read("generateCustodyKey(state.custody.devices[0].uid)");
+  assert(read("state.custody.keys.length")===0,"an unprepared new signer created a key");
+  read("prepareWorkshopDevice(state.custody.devices[0].uid)");
+  assert(!read("state.custody.devices[0].softwarePrepared"),"software preparation skipped inspection");
+  read("inspectWorkshopDevice(state.custody.devices[0].uid);prepareWorkshopDevice(state.custody.devices[0].uid);generateCustodyKey(state.custody.devices[0].uid);backupCustodyKey(state.custody.keys[0].id,'paperbackup');assignCustodyKey(state.custody.keys[0].id)");
+  assert(read("workshopHealth().score")===65,"same-site setup earned separation points");
+  read("state.custody.keys[0].backup.place='bank'");
+  assert(read("workshopHealth().score")===85,"distinct-site recorded setup did not reach the rehearsal-limited maximum");
+  read("delete state.custody.devices[0].workshopSetup;delete state.custody.devices[0].inspected;delete state.custody.devices[0].softwarePrepared");
+  assert(read("workshopHealth().score")===85,"legacy keyed equipment lost its working status");
 });
 
 /* ---- THE RECORDED FEE RATES ---- */
@@ -4759,6 +4809,40 @@ rule("a manual stop survives the monthly bill and clearing arrears; a policy loc
    121 rules passing while one of them was failing every run - a mutant survived purely
    because of where its contract happened to be written. An exit hook cannot be outrun by a
    rule added later, wherever it lands. */
+rule("correspondence deduplicates findings and records resolution and recurrence", () => {
+  const read=makeEval(loadEngine());
+  read(`state.correspondence=[];state.time=100;syncCorrespondence(state,[{id:"hotkey",text:"Missing backup"}]);syncCorrespondence(state,[{id:"hotkey",text:"Missing backup"}]);`);
+  assert(read("state.correspondence.length")===1,"repeated finding produced duplicate mail");
+  read(`state.time=200;syncCorrespondence(state,[]);`);
+  assert(read("state.correspondence[0].resolvedAt")===200,"fixed finding was not marked addressed");
+  read(`state.time=300;syncCorrespondence(state,[{id:"hotkey",text:"Missing backup again"}]);`);
+  assert(read("state.correspondence.length===1&&state.correspondence[0].resolvedAt===null&&state.correspondence[0].reopenedAt===300"),"returning finding lost its archive or status");
+});
+rule("correspondence persists without changing money or the random stream", () => {
+  const read=makeEval(loadEngine());
+  read(`state.started=true;state.walletSetup.done=true;state.correspondence=[];state.custody.hotKeyId="mail-test";state.custody.keys.push({id:"mail-test",hot:true,backup:null});state.wallets.hot=1;`);
+  const before=read("JSON.stringify([state.cash,state.wallets,state.rng])");
+  read("save()");
+  assert(read('state.correspondence.some(m=>m.id==="hotkey")'),"actual hot-key finding did not create a letter");
+  assert(read("JSON.stringify([state.cash,state.wallets,state.rng])")===before,"mail changed game economics or randomness");
+  const stored=JSON.parse(read("localStorage.getItem(SAVE_KEY)"));
+  const reloaded=makeEval(loadEngine(stored));
+  assert(reloaded('state.correspondence.some(m=>m.id==="hotkey")'),"letter did not survive a save reload");
+});
+rule("campaign letters follow reached conditions once and respect mining eras", () => {
+  const read=makeEval(loadEngine());
+  read(`state=initialState();state.started=true;state.walletSetup.done=true;state.correspondence=[];updateCorrespondence();`);
+  assert(read("state.correspondence.length")===0,"a new operation was credited with progress it had not made");
+  read(`state.operator.solventMonths=1;updateCorrespondence();state.mode="pool";updateCorrespondence();`);
+  assert(read('state.correspondence.some(m=>m.id==="story-paid")&&!state.correspondence.some(m=>m.id==="story-pool")'),"bill progress or pre-pool chronology was wrong");
+  read(`state.time=at("2011-01-01");state.wallets.cold=1;state.hardware.avalon=1;updateCorrespondence();`);
+  assert(read('state.correspondence.some(m=>m.id==="story-pool")&&state.correspondence.some(m=>m.id==="story-cold")&&!state.correspondence.some(m=>m.id==="story-asic")'),"pool/reserve progress or ASIC chronology was wrong");
+  read(`state.time=at("2013-01-29");updateCorrespondence();updateCorrespondence();save();`);
+  assert(read('state.correspondence.filter(m=>m.kind==="story").length')===4,"repeated updates duplicated or omitted a campaign letter");
+  const stored=JSON.parse(read("localStorage.getItem(SAVE_KEY)"));
+  const again=makeEval(loadEngine(stored));again("updateCorrespondence()");
+  assert(again('state.correspondence.filter(m=>m.kind==="story").length')===4,"campaign archive did not survive reload intact");
+});
 process.on("exit", () => {
   if (failures.length) {
     console.error(`Engine behaviour: ${failures.length} of ${checked} rules failed\n`);

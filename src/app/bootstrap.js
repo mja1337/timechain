@@ -16,4 +16,9 @@ document.addEventListener("visibilitychange",()=>{
     showToast("Paused while you were away","The clock stops when this tab is hidden. Press play to carry on.","status");
   }
 });
-holdRendersDuringPress();if(state.ended)state.speed=0;setTimer();startMempoolTimer();render();window.gameBooted=true;
+holdRendersDuringPress();if(state.ended)state.speed=0;setTimer();startMempoolTimer();
+// Existing runs can meet a new letter's condition while paused. Observe them on
+// boot too, and persist only after the first render succeeds.
+const bootLettersBefore=JSON.stringify(state.correspondence||[]);
+updateCorrespondence();render();window.gameBooted=true;
+if(JSON.stringify(state.correspondence||[])!==bootLettersBefore)save();

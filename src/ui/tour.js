@@ -27,11 +27,11 @@ const TOUR_STEPS=[
   {id:"ticker",chapter:"The basics",tab:"dashboard",target:[".ticker"],title:"Your numbers",
     // A phone has no room for the ticker and hides it; a step about something that is not there is skipped.
     skip:()=>{const t=document.querySelector(".ticker");return !t||getComputedStyle(t).display==="none"},
-    body:"<b>Liquid fiat</b> is the cash that pays the bills. <b>Self-held BTC</b> is coins whose keys you hold; <b>custodial BTC</b> is a promise from an exchange, and promises fail. <b>Your hash</b> is the work you contribute to the network, and <b>net worth</b> is everything marked to market. BTC does not pay a bill until it has been sold."},
+    body:"<b>Cash available</b> is the cash that pays the bills. <b>Self-held BTC</b> is coins whose keys you hold; <b>custodial BTC</b> is a promise from an exchange, and promises fail. <b>Your hash</b> is the work you contribute to the network, and <b>net worth</b> is everything marked to market. BTC does not pay a bill until it has been sold."},
   {id:"briefing",chapter:"The basics",tab:"dashboard",target:[".operator-briefing"],title:"Your briefing",
     body:"This panel says what matters right now and what to do about it: your first shift, your first bill, a faulty machine, a cash warning. <b>When you do not know what to do next, read it.</b> It carries on after the tour has ended."},
-  {id:"command",chapter:"The basics",tab:"dashboard",target:[{text:"Operating command centre"}],title:"The command centre",
-    body:"Four gauges for the four things that end runs: how many months of cash you have, whether mining earns more than the electricity it burns, how full the site is, and how safely your keys are kept. Each has a button to the page that fixes it."},
+  {id:"command",chapter:"The basics",tab:"dashboard",target:[{text:"Your next decisions"}],title:"Choose your next move",
+    body:"Start with cash, mining costs, site limits and key safety. The other cards explain payout timing and chain verification. Each question links to the page where you can act."},
   {id:"story",chapter:"The basics",tab:"dashboard",target:[".sidebar"],title:"The Bitcoin story",
     body:"The history is real and it is happening to you: halvings, exchange collapses, bans, new machines. Dated events pause the game and explain what happened and why it mattered, and some of them reach into your operation. This is the timeline of what has happened and what is coming."},
   {id:"mine",chapter:"Mining",tab:"mine",target:[{text:"Fleet command"},".content .card"],title:"Mine: your machines",
@@ -60,7 +60,7 @@ const TOUR_STEPS=[
     body:"Skill points buy lasting capabilities in six branches, from undervolting and smart metering to multisig discipline and monitoring. Nothing here is an instant multiplier: each unlock changes what you can do or what can go wrong."},
   {id:"ledger",chapter:"The record",tab:"ledger",target:[{text:"Operator milestones"},".content .card"],title:"Ledger: what changed",
     body:"Milestones you have reached and a filterable history of every trade, repair, payout and decision, with your cash, coins and hash after each. When something looks wrong, this is where you find out when it changed."},
-  {id:"method",chapter:"The record",tab:"method",target:[{text:"Operator manual"},".content .card"],title:"Method: the rules",
+  {id:"method",chapter:"The record",tab:"method",target:[{text:"Understand the numbers"},".content .card"],title:"Method: the rules",
     body:"How the simulation works and where each number comes from, with every figure marked as recorded history or as the game's own model. If a number surprises you, the explanation is here."},
   {id:"finish",center:true,finish:true,chapter:"Ready",tab:"dashboard",title:"That is every room",
     body:"Your first job is small: <b>keep one laptop mining and pay the first bill</b>. Watch your briefing for what to do next, and press the pause button whenever you need time to think. You can replay this tour from the footer at any point."}

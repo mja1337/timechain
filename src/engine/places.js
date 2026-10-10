@@ -189,6 +189,7 @@ function advancePlaceRisks(next,silent=false){
     const items=placeItems(place.id);if(!placeHolds(items))continue;
     if(place.fee>0&&state.cash>=place.fee){state.cash-=place.fee;log(`${place.name} fee`,`-${fmtUsd(place.fee)}`,"custody")}
     for(const kind of CUSTODY_PLACE_KINDS){
+      if(kind==="betrayal"&&!trustedReadableBackups(place.id).length)continue;
       if(hashRoll(state.seed,"place",month,place.id,kind)<placeRate(place.id,kind)){applyPlaceIncident(place.id,kind,next,silent);break}
     }
   }
@@ -200,9 +201,32 @@ const PLACE_KIND_WORDS={fire:["A fire","burned"],flood:["A flood","flooded"],bur
 /* How long the aftermath of a fire, flood or break-in at the mine stays on the floor. A picture and nothing else: no rule reads it. */
 const SITE_SCENE_DAYS=21;
 function applyPlaceIncident(placeId,kind,next,silent=false){
+  if(kind==="betrayal")return applyTrustedBetrayal(placeId,next,silent);
   applyPlaceIncidentBase(placeId,kind,next,silent);
   if(placeId==="site"&&(kind==="fire"||kind==="flood"||kind==="burglary"))state.siteScene={kind,at:next,until:next+SITE_SCENE_DAYS*DAY};
   if(typeof hotKeyAfterIncident==="function")hotKeyAfterIncident(placeId,kind,next,silent);
+}
+/* Reading a seed leaves the paper or steel intact. Devices and public wallet descriptors are
+   not assumed to reveal a secret. This fictional risk matches the trusted house's flood rate. */
+function trustedReadableBackups(placeId){
+  return placeId==="trusted"?placeItems(placeId).backups.filter(k=>!k.retired&&!k.exposed):[];
+}
+function applyTrustedBetrayal(placeId,next,silent=false){
+  const backups=trustedReadableBackups(placeId);if(!backups.length)return;
+  const secrets=new Set(backups.map(k=>k.seed||k.id)),assigned=custodyAssignedKeys(),policy=custodyPolicy(state.custody.policy);
+  for(const key of state.custody.keys||[])if(!key.retired&&secrets.has(key.seed||key.id))key.exposed={cause:"betrayal",at:next};
+  const known=new Set(assigned.filter(k=>secrets.has(k.seed||k.id)).map(k=>k.seed||k.id));
+  log("Your friend recognised the recovery words",`${secrets.size} signing secret${secrets.size===1?"":"s"} copied; the original backups remain intact`,"custody");
+  const hot=typeof hotKey==="function"&&hotKey()?0:(state.wallets.hot||0),cold=state.wallets.cold||0,held=hot+cold;
+  if(policy.threshold>0&&known.size>=policy.threshold&&held>0){
+    const taken=held*(PLACE_THEFT_FLOOR+PLACE_THEFT_SPREAD*hashRoll(state.seed,"betrayal-theft",placeId,next));
+    state.wallets.hot=Math.max(0,(state.wallets.hot||0)-taken*hot/held);state.wallets.cold=Math.max(0,cold-taken*cold/held);
+    reportCoinLoss({title:"Your friend found out what the words were worth",kind:"stolen",btc:taken,cause:"betrayal",odds:{monthly:placeRate(placeId,"betrayal"),note:"A fictional friend-access risk, set equal to this house's flood chance. It applies to readable seed backups here, not to a bank deposit box."},from:"the recovery material at your friend's house",
+      what:`The envelope was still in the drawer. Your friend had copied ${known.size} distinct signing secret${known.size===1?"":"s"}, enough to meet the wallet's ${policy.threshold}-signature rule. ${fmtBtc(taken)} left the wallet.`,
+      why:"A recovery copy can restore spending authority for whoever reads it. Keeping it at another address reduced shared disaster risk, but also gave another person access to the secret. Steel changes durability, not who can read it.",
+      remedy:policy.threshold>1?"Rotate the exposed keys. Keep fewer than a signing quorum accessible to any one friend; use separate people or controlled storage for the remaining keys.":"Rotate this key and move the remaining funds to its replacement wallet. A second copy of the exposed seed cannot revoke your friend's copy. Review access before choosing the next storage location.",tab:"custody"});
+  }else if(!silent)showToast("The envelope is still there. The secret is no longer yours alone.",known.size?`Your friend copied ${known.size} distinct signing secret${known.size===1?"":"s"}, below the wallet's ${policy.threshold}-signature threshold. This incident cannot spend the reserve, but rotate the exposed keys. Moving the same backup cannot erase their copy.`:"Your friend copied recovery material. No assigned reserve-wallet quorum was exposed. Replace the secret before relying on it; moving the envelope cannot recall a copy.","bad","custody");
+  if(typeof hotKeyAfterIncident==="function")hotKeyAfterIncident(placeId,"betrayal",next,silent);
 }
 function applyPlaceIncidentBase(placeId,kind,next,silent=false){
   const c=state.custody,place=custodyPlace(placeId),policy=custodyPolicy(c.policy),items=placeItems(placeId);

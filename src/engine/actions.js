@@ -500,7 +500,18 @@ function sellBtc(bucket,fraction){
   if(impact>0)addPressure(notional,1);
   state.wallets[bucket]-=btc;state.cash+=usd;log(bucket==="etf"?"Sold ETF exposure":"Sold bitcoin",`-${fmtBtc(btc)} · +${fmtUsd(usd)} at ${fmtUsd(price)}${impact>=.001?` · ${impactNote(impact)}`:""}`,"trade");
   if(state.settlementSaleMode&&state.pendingSettlement&&state.cash+1e-8>=state.pendingSettlement.due){state.settlementSaleMode=false;finishMonthlySettlement("btc-rescue");return}
-  showToast(bucket==="etf"?"ETF sale complete":"Bitcoin sale complete",impact>=.01?`${fmtBtc(btc)} became ${fmtUsd(usd)}. The order was ${formatPercent(impact*100)}% of its quoted value larger than the book could absorb, so it filled below the quote. ${fmtUsd(state.cash)} cash is now available.`:`${fmtBtc(btc)} became ${fmtUsd(usd)} after fees. ${fmtUsd(state.cash)} cash is now available.`,"info","market");save();render();
+  showToast(bucket==="etf"?"ETF sale complete":"Bitcoin sale complete",impact>=.01?`${fmtBtc(btc)} became ${fmtUsd(usd)}. Modelled market impact reduced the proceeds by ${formatPercent(impact*100)}% before the combined effect of fees. A large sale reaches less favourable bids instead of filling entirely at the reference price. ${fmtUsd(state.cash)} cash is now available.`:`${fmtBtc(btc)} became ${fmtUsd(usd)} after fees. ${fmtUsd(state.cash)} cash is now available.`,"info","market");save();render();
+}
+function depositAndSell(bucket,fraction=1){
+  if(bucket==="etf")return;
+  if(venueFrozen(bucket))return showToast("Withdrawals frozen",`${walletName(bucket)} has paused withdrawals until ${dateFmt(state.ops.venueFreezes[bucket])}.`);
+  fraction=clamp(Number(fraction)||1,.01,1);const hotGross=state.wallets.hot*fraction;if(hotGross<=0)return showToast("No spendable BTC","Move bitcoin into the hot wallet first.");
+  const transferFee=transferNetworkFee("hot",fraction),btc=hotGross-transferFee;if(btc<=0)return showToast("Transfer too small","The hot-wallet amount is not enough to cover the transfer fee.");
+  const fee=venueTradeFee(bucket),price=priceAt(state.time),gross=btc*price,impact=tradeImpact(gross,1),usd=gross*(1-fee)*(1-impact);
+  utxoMoved("hot",bucket,fraction);state.wallets.hot-=hotGross;state.cash+=usd;if(impact>0)addPressure(gross,1);
+  log("Deposited and sold bitcoin",`${fmtBtc(hotGross)} from hot wallet · +${fmtUsd(usd)} cash at ${fmtUsd(price)}`,"trade");
+  if(state.settlementSaleMode&&state.pendingSettlement&&state.cash+1e-8>=state.pendingSettlement.due){state.settlementSaleMode=false;finishMonthlySettlement("btc-rescue");return}
+  showToast("Deposit and sale complete",`${fmtBtc(btc)} reached ${walletName(bucket)} and sold for ${fmtUsd(usd)} after transfer, venue fees and market impact. ${fmtUsd(state.cash)} cash is now available.` ,"info","market");save();render();
 }
 /* Spending it. The coins leave, a code arrives, and the only thing the operation gains is
    the experience of having used the money as money. That is the joke and it is also the
@@ -547,7 +558,7 @@ function transfer(from,to,fraction,opts={}){
    ordering a single fan stays a single click and ordering five hundred does not. Five hundred
    hashboards is a five-figure commitment against a lead time - the kind of spend the rest of
    the game already stops to confirm. */
-const CONFIRMABLE_ACTIONS=new Set(["buy-btc","sell-btc","buy-hw","buy-hw-btc","sell-hw","sell-hw-btc","buy-strategy","sell-strategy","buy-node","buy-backup-node","order-parts-bulk"]);
+const CONFIRMABLE_ACTIONS=new Set(["buy-btc","sell-btc","deposit-sell","buy-hw","buy-hw-btc","sell-hw","sell-hw-btc","buy-strategy","sell-strategy","buy-node","buy-backup-node","order-parts-bulk"]);
 function transactionPreviewValid(preview){return !!preview&&[preview.give,preview.receive,preview.reference,preview.fees,preview.after].every(value=>!/(?: -|NaN|Infinity)/.test(String(value)))}
 function requestTransactionConfirmation(button){const preview=transactionPreview(button);if(!preview)return;if(!transactionPreviewValid(preview))return showToast("Quote unavailable","One or more transaction values could not be calculated. No balances were changed.");state.lastReal=Date.now();state.speed=0;pendingTransaction=preview;setTimer();render()}
 function restoreTransactionSpeed(transaction){state.speed=transaction?.resumeSpeed||0;if(state.speed>0)state.returnSpeed=state.speed;state.lastReal=Date.now();setTimer()}
@@ -555,7 +566,7 @@ function cancelTransactionConfirmation(){const transaction=pendingTransaction;pe
 function confirmTransaction(){
   const transaction=pendingTransaction;if(!transaction)return;pendingTransaction=null;restoreTransactionSpeed(transaction);
   if(transaction.action==="transfer"){transfer(transaction.from,transaction.to,transaction.fraction,{rush:transaction.rush});return}
-  if(transaction.action==="order-parts-bulk")orderParts(transaction.id,transaction.qty);else if(transaction.action==="buy-btc")buyBtc(transaction.id,transaction.fraction);else if(transaction.action==="sell-btc")sellBtc(transaction.id,transaction.fraction);else if(transaction.action==="buy-hw")buyHardware(transaction.id,transaction.requested);else if(transaction.action==="buy-hw-btc")buyHardwareBtc(transaction.id,transaction.requested);else if(transaction.action==="sell-hw")sellHardware(transaction.id,transaction.requested);else if(transaction.action==="sell-hw-btc")sellHardwareBtc(transaction.id,transaction.requested);else if(transaction.action==="buy-strategy")buyStrategy(transaction.id,transaction.fraction);else if(transaction.action==="sell-strategy")sellStrategy(transaction.id,transaction.fraction);else if(transaction.action==="buy-node")buyNode(transaction.requested);else if(transaction.action==="buy-backup-node")buyBackupNode();
+  if(transaction.action==="order-parts-bulk")orderParts(transaction.id,transaction.qty);else if(transaction.action==="buy-btc")buyBtc(transaction.id,transaction.fraction);else if(transaction.action==="sell-btc")sellBtc(transaction.id,transaction.fraction);else if(transaction.action==="deposit-sell")depositAndSell(transaction.id,transaction.fraction);else if(transaction.action==="buy-hw")buyHardware(transaction.id,transaction.requested);else if(transaction.action==="buy-hw-btc")buyHardwareBtc(transaction.id,transaction.requested);else if(transaction.action==="sell-hw")sellHardware(transaction.id,transaction.requested);else if(transaction.action==="sell-hw-btc")sellHardwareBtc(transaction.id,transaction.requested);else if(transaction.action==="buy-strategy")buyStrategy(transaction.id,transaction.fraction);else if(transaction.action==="sell-strategy")sellStrategy(transaction.id,transaction.fraction);else if(transaction.action==="buy-node")buyNode(transaction.requested);else if(transaction.action==="buy-backup-node")buyBackupNode();
   if(document.querySelector('[data-action="confirm-transaction"]'))render();
 }
 function unlockSkill(id){

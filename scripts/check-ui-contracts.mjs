@@ -5,7 +5,8 @@ const root = new URL("../", import.meta.url);
 const html = await readFile(new URL("index.html", root), "utf8");
 const css = await readFile(new URL("src/styles/app.css", root), "utf8");
 const appScripts = [...html.matchAll(/<script src="(src\/[^"?]+\.js)(?:\?v=[^"]*)?"><\/script>/g)].map(match => match[1]);
-const inline = (await Promise.all(appScripts.map(file => readFile(new URL(file, root), "utf8")))).join("\n");
+// Source-boundary checks must behave the same with Windows and Unix checkouts.
+const inline = (await Promise.all(appScripts.map(file => readFile(new URL(file, root), "utf8")))).join("\n").replace(/\r\n/g, "\n");
 const engineModules = (await readdir(new URL("src/engine/", root))).filter(name => name.endsWith(".js"));
 const simulationSource = await readFile(new URL("src/engine/simulation.js", root), "utf8");
 const buildSource = await readFile(new URL("scripts/build-historical-data.mjs", root), "utf8");
@@ -54,7 +55,7 @@ assert(inline.includes('data-action="wallet-demo"'), "Wallet education must rema
 assert(inline.includes("guidance:{dismissed:[]}") && inline.includes("state.guidance=Object.assign({dismissed:[]}") && inline.includes('if(a==="dismiss-guidance")'), "Save-compatible Operator briefing dismissals are missing");
 assert(inline.includes("function operatorBriefing()") && inline.includes("Operator briefing ·") && inline.includes("Recommended next step") && inline.includes("New to Bitcoin mining? Start with these terms"), "The state-aware newcomer Operator briefing is incomplete");
 assert(inline.includes('if(state.pendingSettlement)return""') && inline.includes('id:"grid-arrears"') && inline.includes('id:"high-temperature"') && inline.includes('id:"open-faults"') && inline.includes('id:"capacity-pressure"') && inline.includes('id:"first-run"') && inline.includes('id:"first-bill"') && inline.includes('id:"first-upgrade"') && inline.includes('id:"pool-available"') && inline.includes('id:"low-runway"'), "Operator briefing priority states are incomplete");
-assert(inline.includes("A Bitcoin wallet manages private keys") && inline.includes("Do not use this key for real bitcoin"), "Wallet setup is missing its newcomer purpose or safety explanation");
+assert(inline.includes("A private key lets your wallet create a signature") && inline.includes("Do not use this key for real bitcoin"), "Wallet setup is missing its newcomer purpose or safety explanation");
 assert(inline.includes('data-action="starting-mode"'), "Difficulty controls are missing");
 assert(inline.includes("Starting difficulty"), "Method is missing difficulty documentation");
 assert(inline.includes("Transaction sizing and procurement"), "Method is missing transaction documentation");
@@ -1097,7 +1098,7 @@ assert(inline.includes("function poolTermsAt(id=state.pool,t=state.time)") && in
 assert(/slush[\s\S]{0,120}"score"[\s\S]{0,60}"2023-12-12","fpps"/.test(poolsSource), "Slush ran a score-based payout from 2010 and only moved to FPPS on 12 December 2023");
 assert(/viabtc[\s\S]{0,120}"2016-08-01","ppsplus"/.test(poolsSource), "ViaBTC invented PPS+ in August 2016; its timeline should reflect that");
 const orientationTabs = ["mine","pools","market","custody","facilities","energy","finance","learn","tech","ledger","method"];
-assert(inline.includes('class="card section-pulse section-orientation"') && inline.includes("What this page is for") && inline.includes("Current situation") && inline.includes("Recommended next step") && inline.includes("Why it matters"), "The reusable page-orientation structure is missing a required decision layer");
+assert(inline.includes('class="card section-pulse section-orientation"') && inline.includes("What this page is for") && inline.includes("Right now") && inline.includes("Next move") && inline.includes("The trade-off"), "The reusable page-orientation structure is missing a required decision layer");
 assert(orientationTabs.every(tab=>new RegExp(`(?:^|\\s)${tab}:\\{purpose:`).test(inline)), "One or more non-Dashboard tabs is missing its page purpose and state-aware orientation copy");
 assert(css.includes(".section-orientation{") && css.includes(".orientation-guide{") && css.includes("@media(max-width:700px){.orientation-intro"), "Page orientation is missing its desktop or mobile layout");
 assert(inline.includes("Your machines are mining.") && inline.includes("Self-held BTC") && inline.includes("BTC held by others") && inline.includes("Site power used"), "Dashboard still relies on technical or ambiguous labels instead of the Phase 3 operating language");
@@ -1160,7 +1161,7 @@ assert(inline.includes("function feedbackKind(") && inline.includes("function fe
 assert(css.includes(".toast.toast-success{") && css.includes(".toast.toast-blocked{") && inline.includes("Open ${escapeHtml(t.tab)}"), "Success and blocked feedback lack distinct styling or a clear destination action");
 assert(inline.includes("function transactionImpact(transaction)") && inline.includes("Operational consequence") && inline.includes("You give now") && inline.includes("Position afterward"), "Transaction review no longer separates the immediate exchange, operational consequence and resulting position");
 assert(inline.includes("function eventGameplayEffect(e)") && ["What happened","Why it mattered","Effect on your operation","CONTEXT · NOT CAUSATION"].every(label=>inline.includes(label)), "Historical events no longer separate fact, significance, gameplay effect and independent market context");
-assert(inline.includes("Immediate effect: move BTC") && inline.includes("Consequence: the month is recorded as a rescue") && inline.includes("function settlementRescueFeedback(") && inline.includes("Receivership seized part of the treasury"), "Settlement, rescue or receivership feedback has lost its immediate and lasting consequences");
+assert(inline.includes("Turn some of your bitcoin into the cash this bill requires") && inline.includes("this month is recorded as a rescue") && inline.includes("function settlementRescueFeedback(") && inline.includes("Receivership seized part of the treasury"), "Settlement, rescue or receivership feedback has lost its immediate and lasting consequences");
 
 /* LOSING COINS IS NOT A TOAST.
    Every incident that takes bitcoin off the player permanently must stop the clock and take
@@ -1224,7 +1225,7 @@ for (const file of engineModules) {
    left to notice a flag, and a modal nothing draws is worse than the toast it replaced. */
 assert(/state\.lossResume=true;[\s\S]{0,400}queueRender\(true\)/.test(inline),
   "A reported loss no longer asks for the repaint that draws it, and the stopped clock leaves nothing to");
-assert(["What happened","Why it was possible","What prevents it"].every(label => inline.includes(label)),
+assert(["What happened","Why it was possible","Reducing this risk"].every(label => inline.includes(label)),
   "A coin-loss modal no longer separates what left, why it was possible and what prevents it recurring");
 for (const cause of ["hotwallet","entropy","nobackup","phishing","receivership"])
   assert(inline.includes(`cause:"${cause}"`), `The ${cause} incident no longer reports its loss as a full-screen incident`);
@@ -1918,7 +1919,7 @@ assert(css.includes(".svg-sprite-defs{position:absolute;width:0;height:0;overflo
     assert(mount.indexOf("sites.js") > 0 && mount.indexOf("sites.js") < mount.indexOf("scenery.js"), "sites.js is not loaded before scenery.js");
   }
   // Before the market opens, cash and miners are the only way to pay a bill, and the game says so everywhere it matters.
-  assert(inline.includes("STARTING_LIQUIDITY_DEFAULT=2500") && inline.includes("with a laptop and $2,500.") && inline.includes("a $2,500 default (the minimum is $1,500)"), "The default opening cash or its explanation has changed back");
+  assert(inline.includes("STARTING_LIQUIDITY_DEFAULT=2500") && inline.includes("before trading opens, the coins you mine cannot pay the bills") && inline.includes("a $2,500 default (the minimum is $1,500)"), "The default opening cash or its explanation has changed back");
   assert(inline.includes("function endRunNoMarket(due)") && inline.includes("if(state.time<MARKET&&typeof endRunNoMarket===\"function\"&&endRunNoMarket(due))return;") && inline.includes('state.endReason==="nomarket"'), "A run can survive the gap before the market opens by restructuring again, or the end screen no longer says why it ended");
   assert(inline.includes('id:"no-market-cash"') && inline.includes('id="method-no-market"') && inline.includes("Before July 2010 there is no market"), "The Dashboard warning, the Method section or the tour no longer explain the no-market rule");
   assert(inline.includes("disabled:state.debt>0||noMarket") && inline.includes("disabled:noMarket,title:noMarket?NO_MARKET_RULE"), "The settlement screen offers arrears or restructuring before the market opens");
@@ -1953,7 +1954,7 @@ assert(css.includes(".svg-sprite-defs{position:absolute;width:0;height:0;overflo
   // Good news waits behind a modal; a refused save is visible.
   assert(notify.includes("TOAST_DEFERRABLE") && inline.includes("flushDeferredToasts();"), "A toast can land on top of a modal again");
   assert(notify.includes("function announceSaveState()") && inline.includes("saveStateHtml()"), "A browser that refuses to store the game is no longer shown in the header");
-  assert(/function save\(\)\{return writeSave\(state\)\}/.test(inline), "save() no longer reports whether the game was stored");
+  assert(/function save\(\)\{[^}]*return writeSave\(state\)\}/.test(inline), "save() no longer reports whether the game was stored");
 }
 
 console.log("UI contracts passed: Mine purchases, difficulty and mobile speed controls, transaction precision, enhancement guards, mempool containment, fleet servicing, repair labour, overdrive, Method coverage, speed-resume safety, the exchange trade-ticket flow, network-hash display parity, bad-event impact effects, timed facility-upgrade risk, mining-floor connectivity/power status, the 100-year procedural sandbox continuation, pool fee display, pool shutdown fail-over, the custody transfer slider, Lightning gating, live market pricing, mempool realism, disabled-control tooltips, the single-venue market redesign, Mine-tab scroll stability, full-refurbishment puzzle consistency, the proactive settlement warning, connectivity ping, the unified incoming-fleet pipeline, proportional fleet-health severity colors, rival operators, milestone moments, the end-of-run recap, cross-run career persistence, the dice-entropy wallet-setup ceremony, the era-accurate wallet-software upgrade path, the resetGame() operator-era crash fix, the real mailing-list learning items, the Dashboard build-queue card, hands-on self-servicing before technicians are hired, the fault-clearing/offline-threshold repair fix, the non-blocking faucet popup, tiered spare parts, the historically-grounded custody/region exposure warnings, free self-serviced labour with real self-damage risk, the four hardware self-help skills, staff dismissal the operator XP/level system, dated pool payout schemes, one drawing per machine, and scroll-anchored, frame-aligned repaints");

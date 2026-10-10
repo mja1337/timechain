@@ -82,7 +82,7 @@ function beginColdSpend(to,gross,fee,opts={}){
     ? `${set.policy.threshold} signatures gathered from ${set.policy.keys} keys held apart`
     : "one key retrieved, signed and broadcast";
   log("Cold spend signing started",`${fmtBtc(gross)} → ${walletName(to)} · ${days} day${days===1?"":"s"} · ${detail}`,"custody");
-  showToast("Signing under way",`${fmtBtc(gross)} is leaving cold storage for ${walletName(to)}. ${detail[0].toUpperCase()+detail.slice(1)} takes ${days} simulation day${days===1?"":"s"} - which is what the protection costs when you need the coins.`,"info","custody");
+  showToast("Signing under way",`${fmtBtc(gross)} is leaving cold storage for ${walletName(to)}. ${detail[0].toUpperCase()+detail.slice(1)} takes ${days} simulation day${days===1?"":"s"} in this simulation. Keeping signing access separate limits what an online attacker can reach, but you must gather it when you want to pay. The coins are in flight until this finishes; leave time before a bill falls due.`,"info","custody");
   save();render();
 }
 /* The signature lands and the transaction confirms. Nothing here can fail: the risk of holding

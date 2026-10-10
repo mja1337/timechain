@@ -43,7 +43,7 @@ function custodyAuditJob(s=state){return (s.custody&&s.custody.audit)||null}
 
 function custodyPostureFindings(s=state){
   const set=custodySetup(s),out=[],add=(id,text,blocks)=>out.push({id,text,blocks});
-  if(!set.ready)add("unsigned","No wallet can sign yet: not every key the policy needs is assigned.","basic");
+  if(!set.ready)add("unsigned","The cold-storage policy is not ready: not every required key is assigned. Your online wallet is separate.","basic");
   else if(!custodyRecoverable(s))add("unrecoverable","The wallet could not be rebuilt if a signer were lost: a backup or the quorum's configuration is missing.","basic");
   if(typeof hotKeyUnbacked==="function"&&hotKeyUnbacked(s))add("hotkey","The key to your online wallet exists only on the mining computer: one dead disk takes everything in it.","strong");
   if(set.exposed>0)add("exposed","A key of this wallet is known to somebody else. Replace it.","strong");
@@ -178,5 +178,5 @@ function coinCoverClaim(entry,btc,s=state){
   if(s.time<cover.since+COVER_WAIT_DAYS*DAY)return{paid:0,note:` Your cover was bound ${Math.floor((s.time-cover.since)/DAY)} days ago and does not pay for the first ${COVER_WAIT_DAYS}.`};
   const tier=custodyPosture(s).tier,share=COVER_PAYS[tier]||0,paid=usd*share;
   if(paid<=0)return{paid:0,note:""};
-  return{paid,note:` Your cover paid ${fmtUsd(paid)}, ${Math.round(share*100)}% of the ${fmtUsd(usd)} lost, at your ${tier} posture. It is cash, not coins.`};
+  return{paid,note:` Your cover paid ${fmtUsd(paid)}, ${Math.round(share*100)}% of the ${fmtUsd(usd)} lost, based on your key and recovery assessment. It is cash, not coins.`};
 }

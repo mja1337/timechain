@@ -1,11 +1,14 @@
 "use strict";
 
 let recentTouchTab=null;
+installEventPerspectiveInteractions();
 document.getElementById("app").addEventListener("click",e=>{
   const b=e.target.closest("[data-action]");if(!b||b.disabled)return;const a=b.dataset.action,v=b.dataset.value,id=b.dataset.id,part=b.dataset.part;
   if(b.closest(".toast")){dismissToast();if(a==="dismiss-toast")return}
+  if(["notification-settings","notification-reduction","notification-prompt-close"].includes(a)){notificationAction(a,v);return}
   if(a==="tab"&&recentTouchTab&&recentTouchTab.value===v&&Date.now()-recentTouchTab.at<800){recentTouchTab=null;return}
   if(a==="blocked-help"){showToast("Why this is unavailable",b.dataset.help||"This action is not available in the current state.");return}
+  if(a==="trade-preset"){setTradeAmount(b.dataset.tradeKey,Number(v));return}
   if(a==="percent-snap"){updateTradePercentage(id,Number(v));return}
   if(a==="close-hardware-alert"){closeHardwareAlert(false);return}
   if(a==="inspect-hardware-release"){closeHardwareAlert(true);return}
@@ -54,6 +57,10 @@ document.getElementById("app").addEventListener("click",e=>{
   else if(a==="focus-service")focusServiceRow(id);
   else if(a==="payout-destination")setPayoutDestination(v);else if(a==="payout-threshold")setPayoutThreshold(v);else if(a==="sell-cooling")sellCooling(id);else if(a==="cancel-cooling")cancelCoolingOrder(id);else if(a==="buy-cooling")buyCooling(id);
   else if(a==="gift-card")buyGiftCard(id,Number(v));
+  else if(a==="workshop-select")selectWorkshop(id,v);
+  else if(a==="workshop-inspect")inspectWorkshopDevice(id);
+  else if(a==="workshop-prepare")prepareWorkshopDevice(id);
+  else if(a==="workshop-locations"){const el=document.querySelector('.workshop-locations');if(el){el.open=true;el.scrollIntoView({block:"center",behavior:"smooth"})}}
   else if(a==="custody-buy")orderCustodyProduct(id,1);
   else if(a==="custody-assemble")assembleCustodyBuild(id);
   else if(a==="custody-genkey")generateCustodyKey(id);
@@ -127,8 +134,9 @@ document.getElementById("app").addEventListener("pointerup",e=>{
   const b=e.target.closest('[data-action="tab"]');if(!b||b.disabled)return;
   recentTouchTab={value:b.dataset.value,at:Date.now()};activeTab=openTab(b.dataset.value);mobileMenuOpen=false;render(false);window.scrollTo({top:0,behavior:"smooth"});
 });
-document.getElementById("app").addEventListener("input",e=>{if(e.target.matches("[data-starting-cash]")){introStartingCash=clampStartingLiquidity(e.target.value);document.querySelectorAll("[data-starting-cash]").forEach(input=>{if(input!==e.target)input.value=introStartingCash});const output=document.querySelector("[data-starting-cash-output]");if(output)output.textContent=fmtUsd(introStartingCash)}else if(e.target.matches("[data-percent-input]"))updateTradePercentage(e.target.dataset.percentInput,e.target.value,e.target);else if(e.target.matches("[data-glossary-search]"))filterGlossary(e.target.value);else if(e.target.matches("[data-pool-history]"))updatePoolExplorer(Number(e.target.value))});
+document.getElementById("app").addEventListener("input",e=>{if(e.target.matches("[data-starting-cash]")){introStartingCash=clampStartingLiquidity(e.target.value);document.querySelectorAll("[data-starting-cash]").forEach(input=>{if(input!==e.target)input.value=introStartingCash});const output=document.querySelector("[data-starting-cash-output]");if(output)output.textContent=fmtUsd(introStartingCash)}else if(e.target.matches("[data-percent-input]"))updateTradePercentage(e.target.dataset.percentInput,e.target.value,e.target);else if(e.target.matches("[data-trade-input]"))refreshTradeAmount(e.target.dataset.tradeInput,e.target.value);else if(e.target.matches("[data-glossary-search]"))filterGlossary(e.target.value);else if(e.target.matches("[data-pool-history]"))updatePoolExplorer(Number(e.target.value))});
 document.getElementById("app").addEventListener("change",e=>{
+  if(e.target.matches("[data-workshop-client]")){setWorkshopClient(e.target.dataset.device,e.target.dataset.workshopClient,e.target.value);return}
   if(e.target.matches("[data-hardware-qty],[data-hardware-currency]")){
     const wrap=e.target.closest(".hardware-buy-controls");if(!wrap)return;
     const h=HARDWARE.find(item=>item.id===wrap.dataset.id);if(!h)return;
