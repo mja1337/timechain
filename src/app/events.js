@@ -24,8 +24,9 @@ document.getElementById("app").addEventListener("click",e=>{
   if(a==="activity-more"){activityLimit+=100;render();return}
   if(a==="starting-mode"){if(STARTING_MODES.some(mode=>mode.id===v)){introDifficulty=v;introStep=1;render()}return}
   if(a.indexOf("tour-")===0){tourAction(a);return}
-  // The tour promises the clock is held, so the speed buttons say so rather than quietly starting it. Pausing is always allowed.
-  if(a==="speed"&&Number(v)>0&&tourActive()){showToast("The tour is holding the clock","Finish or skip the tour to start playing.","blocked");return}
+  // The tutorial promises the clock is held, so the speed buttons say so rather than quietly starting it. Pausing is always allowed,
+  // and a step that needs time to pass (a delivery, or pressing play at the end) lets it run.
+  if(a==="speed"&&Number(v)>0&&tourActive()&&!tourClockAllowed()){showToast("The tutorial is holding the clock","Do what the tutorial card asks, or skip the tutorial to start playing.","blocked");return}
   if(a==="copy-debug"){copyDebugInfo(b);return}
   if(a==="export-unreadable"){const raw=unreadableSaveText();if(raw)downloadText(raw,"timechain-save-unreadable.json");return}
   if(a==="save-notice-dismiss"){saveProblem=null;render();return}

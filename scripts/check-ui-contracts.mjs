@@ -400,44 +400,98 @@ assert(/function skipWalletSetup\(\)\{[\s\S]*?state\.walletSetup\.step=2;save\(\
   "Letting the game generate the key skips the page that shows it and offers the backup");
 assert(inline.includes('typeof hotWalletCard==="function"?hotWalletCard():""') && inline.includes("function hotWalletCard()") && inline.includes('if(key.hot)return showToast("That is your online wallet"'),
   "The online wallet's card is not on the Custody section, or its key can be assigned into a wallet policy");
-// THE TOUR. A new run is walked round every area once, with the clock held, and an old save is not.
+// THE TUTORIAL. A new run is coached through ten short steps, each one real action, with the clock held; by the
+// end the wallet is set up end to end. An old save is not forced into it.
 {
   const tourSource = await readFile(new URL("src/ui/tour.js", root), "utf8");
   const treasurySource = await readFile(new URL("src/ui/tabs/treasury.js", root), "utf8");
-  const ctx = { globalThis: {}, document: { addEventListener() {}, body: { classList: { toggle() {} } } }, window: { addEventListener() {} }, state: { started: true, walletSetup: { done: true } }, activeTab: "dashboard" };
+  const ctx = { globalThis: {}, document: { addEventListener() {}, body: { classList: { toggle() {} } } }, window: { addEventListener() {} }, setInterval() {}, state: { started: true, walletSetup: { done: true } }, activeTab: "dashboard" };
   ctx.globalThis = ctx;
-  vm.runInNewContext(treasurySource + "\n" + tourSource + "\nglobalThis.api={TOUR_STEPS,tourState,tourActive,resolveTab};", ctx);
-  const { TOUR_STEPS, tourState, tourActive, resolveTab } = ctx.api;
-  // The pages the tour points at, without the tour itself: its own selectors would otherwise vouch for themselves.
+  vm.runInNewContext(treasurySource + "\n" + tourSource + "\nglobalThis.api={TOUR_STEPS,tourState,tourActive,resolveTab,normalizeTourState};", ctx);
+  const { TOUR_STEPS, tourState, tourActive, resolveTab, normalizeTourState } = ctx.api;
+  // The pages the tutorial points at, without the tutorial itself: its own selectors would otherwise vouch for themselves.
   const pages = inline.replace(tourSource, "");
   const navTabs = /\["dashboard","mine","pools","treasury"[^\]]*\]/.exec(inline)[0].match(/"([a-z]+)"/g).map(x => x.replace(/"/g, ""));
-  assert(new Set(TOUR_STEPS.map(x => x.id)).size === TOUR_STEPS.length, "Two tour steps share an id");
-  assert(TOUR_STEPS[0].center && TOUR_STEPS[TOUR_STEPS.length - 1].center && TOUR_STEPS[TOUR_STEPS.length - 1].finish, "The tour does not open and close with a centred welcome and a finish");
+  assert(new Set(TOUR_STEPS.map(x => x.id)).size === TOUR_STEPS.length, "Two tutorial steps share an id");
+  assert(TOUR_STEPS.length >= 6 && TOUR_STEPS.length <= 10, `The tutorial should be six to ten short steps, not ${TOUR_STEPS.length}`);
+  assert(TOUR_STEPS[0].center && TOUR_STEPS[TOUR_STEPS.length - 1].finish && TOUR_STEPS[TOUR_STEPS.length - 1].clock, "The tutorial does not open with a welcome and close by starting the clock");
+  for (const id of ["hotbackup", "signer", "prepare", "reservekey", "assign", "offsite", "payout", "start"])
+    assert(TOUR_STEPS.some(x => x.id === id), `The tutorial has lost its "${id}" step: it no longer finishes the wallet setup it promises`);
   for (const step of TOUR_STEPS) {
-    assert(step.title && step.body && step.chapter, `Tour step "${step.id}" has no title, body or chapter`);
-    if (step.center && !step.tab) continue;
-    assert(step.tab && navTabs.includes(resolveTab(step.tab).tab), `Tour step "${step.id}" opens "${step.tab}", which is not a tab in the navigation`);
+    assert(step.title && step.body && step.chapter, `Tutorial step "${step.id}" has no title, body or chapter`);
     if (step.center) continue;
-    assert(Array.isArray(step.target) && step.target.length, `Tour step "${step.id}" points at nothing`);
+    // Every step is an action the game can see being done, not a Next button.
+    assert(typeof step.done === "function" && typeof step.hint === "function", `Tutorial step "${step.id}" cannot tell when it has been done, or does not say what to do`);
+    assert(step.tab && navTabs.includes(resolveTab(step.tab).tab), `Tutorial step "${step.id}" opens "${step.tab}", which is not a tab in the navigation`);
+    assert(Array.isArray(step.target) && step.target.length, `Tutorial step "${step.id}" points at nothing`);
     for (const t of step.target) {
-      if (typeof t === "string") for (const cls of t.match(/\.[A-Za-z][\w-]*/g) || []) assert(pages.includes(cls.slice(1)), `Tour step "${step.id}" rings ${cls}, which no page draws`);
-      else assert(pages.includes(t.text), `Tour step "${step.id}" rings the card headed "${t.text}", which no page draws`);
+      if (typeof t === "function") continue;
+      for (const cls of t.match(/\.[A-Za-z][\w-]*/g) || []) assert(pages.includes(cls.slice(1)), `Tutorial step "${step.id}" rings ${cls}, which no page draws`);
+      for (const [, action] of t.matchAll(/data-action="([^"]+)"/g)) assert(pages.includes(`data-action="${action}"`) || pages.includes(`workshopButton("${action}"`), `Tutorial step "${step.id}" points at a "${action}" button that no page draws`);
     }
   }
-  const tabsCovered = new Set(TOUR_STEPS.map(x => x.tab && resolveTab(x.tab).tab).filter(Boolean));
-  for (const tab of navTabs) assert(tabsCovered.has(tab), `The tour never visits the "${tab}" tab`);
-  for (const section of ["market", "custody", "finance"]) assert(TOUR_STEPS.some(x => x.tab === section), `The tour never visits the Treasury's ${section} section`);
-  // A save from before the tour has done it; it must not be walked round a game it has been playing for months.
+  // Saves: one from before any tour has done it; one part-way through the old tour starts this one again; one part-way
+  // through this one resumes on the same step, by id.
+  assert(normalizeTourState({}).done === true && normalizeTourState({}).active === false, "A save with no tour record is walked through the tutorial");
+  const oldTour = normalizeTourState({ tour: { active: true, done: false, step: 7, resumeSpeed: 1 } });
+  assert(oldTour.active && oldTour.v === 2 && oldTour.id === TOUR_STEPS[0].id && oldTour.resumeSpeed === 1, "A save part-way through the old tour is not restarted cleanly");
+  const mid = normalizeTourState({ tour: { active: true, done: false, v: 2, id: "assign", step: 0, resumeSpeed: 0 } });
+  assert(TOUR_STEPS[mid.step].id === "assign", "A reload part-way through the tutorial does not resume on the same step");
   ctx.state = { started: true, walletSetup: { done: true } };
-  assert(tourState().done === true && tourActive() === false, "A save with no tour record is walked through the tour");
-  ctx.state = { started: true, walletSetup: { done: true }, tour: { active: true, done: false, step: 3 } };
-  assert(tourActive() === true, "A run that is part-way through the tour is not resumed");
-  ctx.state = { started: true, walletSetup: { done: false }, tour: { active: true, done: false, step: 0 } };
-  assert(tourActive() === false, "The tour opens before the wallet exists");
-  assert(inline.includes('if(a.indexOf("tour-")===0){tourAction(a);return}') && inline.includes('tourAfterRender();') && inline.includes('data-action="tour-start">Tour</button>'),
-    "The tour is not wired to the click handler, the render, or the footer");
-  assert(/state\.walletSetup\.required&&typeof beginTour==="function"\)beginTour\(\)/.test(inline), "A new run no longer starts the tour after its wallet ceremony");
-  assert(inline.includes("function endTour()") && /state\.speed=t\.resumeSpeed/.test(inline), "Ending the tour does not put the clock back");
+  assert(tourState().done === true && tourActive() === false, "A save with no tour record is walked through the tutorial");
+  ctx.state = { started: true, walletSetup: { done: false }, tour: { active: true, done: false, step: 0, v: 2, id: "welcome" } };
+  assert(tourActive() === false, "The tutorial opens before the wallet exists");
+  assert(inline.includes('if(a.indexOf("tour-")===0){tourAction(a);return}') && inline.includes('tourAfterRender();') && inline.includes('data-action="tour-start">Replay tutorial</button>'),
+    "The tutorial is not wired to the click handler, the render, or the footer's Replay tutorial");
+  assert(/state\.walletSetup\.required&&typeof beginTour==="function"\)beginTour\(\)/.test(inline), "A new run no longer starts the tutorial after its wallet ceremony");
+  assert(inline.includes("function endTour()") && /state\.speed=t\.resumeSpeed/.test(inline), "Skipping the tutorial does not put the clock back");
+  // Deterministic: the tutorial never draws from the shared random stream.
+  assert(!/nextRand\(|Math\.random\(/.test(tourSource), "The tutorial draws random numbers: a run that takes it would differ from one that skips it");
+  assert(css.includes(".tour-dots") && css.includes(".tour-do{") && /@media\(max-width:800px\)\{\.tour-card\{/.test(css), "The tutorial card has lost its checklist, its instruction or its narrow layout");
+
+  // Played headlessly against the real engine: every step advances on the game's own state, and the end state is a wallet set up end to end.
+  const { loadEngine, makeEval } = await import("./engine-harness.mjs");
+  const sb = loadEngine();
+  sb.addEventListener = () => {}; sb.scrollTo = () => {};
+  const ev = makeEval(sb);
+  vm.runInContext(treasurySource, sb);
+  vm.runInContext(tourSource, sb);
+  ev(`state=initialState();state.started=true;state.cash=2500;state.campaignStart=state.time;state.lastMonth=new Date(state.time).toISOString().slice(0,7);
+      state.walletSetup={done:false,step:0,rolls:[],keyHex:"",required:true,resumeSpeed:1};
+      skipWalletSetup();recordWalletPaper();destroyWalletPaper();takeWalletOath();`);
+  const step = () => ev("tourStep().id");
+  assert(ev("tourActive()") && step() === "welcome" && ev("state.speed") === 0 && ev("state.tour.resumeSpeed") === 1, "A new run's tutorial does not start on the welcome card with the clock held");
+  ev(`tourAction("tour-next")`);
+  assert(step() === "hotbackup" && ev("tourClockAllowed()") === false, "The tutorial does not go from the welcome to backing up the online wallet, or lets the clock run there");
+  ev(`tourAction("tour-next")`);
+  assert(step() === "hotbackup", "A Next button skips a step that has not been done");
+  const rngBefore = ev("state.rng");
+  ev(`backupCustodyKey(hotKey().id,"paperbackup");tourCheck();`);
+  assert(step() === "signer", "Backing up the online wallet does not advance the tutorial");
+  ev(`orderCustodyProduct(tourCheapestSigner().id);tourCheck();`);
+  assert(ev("tourClockAllowed()") === true && ev("state.rng") === rngBefore, "Ordering a signer does not let the clock run for its delivery, or the tutorial drew a random number");
+  ev(`state.speed=1;for(let i=0;i<40&&!tourSigners().length;i++)tick(true);tourCheck();`);
+  assert(step() === "prepare" && ev("state.speed") === 0, "The signer's delivery does not stop the clock and move the tutorial on");
+  ev(`const d=tourSigners()[0];inspectWorkshopDevice(d.uid);tourCheck();`);
+  assert(step() === "prepare", "Inspecting alone counts as preparing the signer");
+  ev(`prepareWorkshopDevice(tourSigners()[0].uid);tourCheck();`);
+  assert(step() === "reservekey", "Preparing the signer does not advance the tutorial");
+  ev(`generateCustodyKey(tourSigners()[0].uid);tourCheck();`);
+  assert(step() === "reservekey", "A reserve key with no backup counts as done");
+  ev(`backupCustodyKey(tourSigners()[0].keyId,"paperbackup");tourCheck();`);
+  assert(step() === "assign", "Writing the reserve key down does not advance the tutorial");
+  ev(`assignCustodyKey(tourSigners()[0].keyId);tourCheck();`);
+  assert(step() === "offsite", "Assigning the reserve key does not advance the tutorial");
+  ev(`moveCustodyItem("backup",hotKey().id,"bank");tourCheck();`);
+  assert(step() === "offsite", "One backup leaving the mine counts as both");
+  ev(`moveCustodyItem("backup",tourSigners()[0].keyId,"trusted");tourCheck();`);
+  assert(step() === "payout", "Sending the backups away does not advance the tutorial");
+  ev(`setPayoutDestination("cold");tourCheck();`);
+  assert(step() === "start" && ev("tourClockAllowed()") === true, "Choosing where income lands does not reach the last step, or the last step will not let the clock start");
+  ev(`state.speed=1;tourCheck();`);
+  assert(!ev("tourActive()") && ev("state.tour.done") === true && ev("state.speed") === 1, "Pressing play on the last step does not finish the tutorial and leave the clock running");
+  const end = JSON.parse(ev(`JSON.stringify({hot:hotKeyBackedUp(),ready:custodySetup().ready,away:tourBackupsAtMine().length===0&&custodyAssignedKeys().length===1,prepared:tourSigners().every(d=>workshopPrepared(d)),dest:poolAccount().destination})`));
+  assert(end.hot && end.ready && end.away && end.prepared && end.dest === "cold", `The tutorial finished without a fully set up wallet: ${JSON.stringify(end)}`);
 }
 for (const act of ["settle-btc","settle-liquidate","settle-bridge","settle-defer","settle-receivership"]) {
   assert(inline.includes(`action:"${act}"`) && inline.includes(`a==="${act}"`),
@@ -1859,8 +1913,8 @@ assert(css.includes(".svg-sprite-defs{position:absolute;width:0;height:0;overflo
     "Bootstrap no longer says the first render succeeded, or the recovery page no longer checks");
   for (const label of ["Export my save", "Start a new run", "Try again", "Copy debug info"]) assert(recovery.includes(label), `The recovery page lost its "${label}" button`);
   assert(!/(^|[^.\w])fetch\(|XMLHttpRequest|sendBeacon/.test(recovery + footer), "Feedback and recovery must not send anything: they only link out and copy text");
-  // The tour's promise that the clock is held.
-  assert(events.includes('if(a==="speed"&&Number(v)>0&&tourActive())'), "The speed buttons start the clock during the tour again");
+  // The tutorial's promise that the clock is held, except on a step that needs time to pass.
+  assert(events.includes('if(a==="speed"&&Number(v)>0&&tourActive()&&!tourClockAllowed())'), "The speed buttons start the clock during the tutorial again");
   // Leaving the tab pauses the game; it does not fast-forward on return.
   assert(/visibilityState==="hidden"[\s\S]*state\.speed=0/.test(bootstrap) && !/tick\(true\)/.test(bootstrap), "A hidden tab no longer pauses the game, or the catch-up burst is back");
   // The footer: feedback, debug text and what is stored.
@@ -1886,7 +1940,7 @@ assert(css.includes(".svg-sprite-defs{position:absolute;width:0;height:0;overflo
   assert(inline.includes('id:"beigepc"') && inline.includes("function coldDepositBlockReason()") && !inline.includes("Cold storage practices unlock in 2012"), "Cold storage is gated on 2012 again, or the early signer is gone");
   assert(inline.includes("function coldSetupCard()") && inline.includes("const CUSTODY_GROUPS=[") && inline.includes("orderCustodyCards(grid)"), "The Custody section has lost its step-by-step card or its order");
   assert(inline.includes('data-action="workshop-focus"') && inline.includes("function focusWorkshopDevice(group,uid)") && inline.includes('scrollIntoView({behavior:"smooth",block:"start"})'), "The cold-storage signer shortcut no longer opens and focuses the selected workshop device");
-  assert(inline.includes('id:"coldsetup"') && inline.includes('id:"custodypage"'), "The tour no longer explains cold storage and the shape of the Custody page");
+  assert(inline.includes('id:"signer"') && inline.includes('id:"reservekey"') && inline.includes('id:"assign"'), "The tutorial no longer walks a new run through setting up cold storage");
   assert(inline.includes('id:"cold-storage"') && inline.includes("const HOT_GRACE_DAYS=60"), "The cold storage briefing or the online wallet's grace period has gone");
   assert(inline.includes("function lossOddsText(o)") && inline.includes('class="modal-odds"'), "The loss modal no longer says how likely the loss was");
   // Disasters are drawn, not just described: an emblem in the loss window and an overlay on the floor, still when motion is reduced.
