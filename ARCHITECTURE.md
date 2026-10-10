@@ -54,6 +54,7 @@
 - `src/ui/enhance/treasury.js` - the settlement reserve card, the cold-spend review and the cost line, as sentences over the engine's numbers.
 - `src/engine/actions.js` - player mutations, transactions, imports and exports.
 - `src/ui/transaction-preview.js` - the review shown before a money action.
+- `src/ui/chart-legend.js` - the shared chart key (swatch in the series' own line style, label, value, units note) used by every chart.
 - `src/ui/presentation.js` - formatting, charts and reusable visual helpers.
 - `src/ui/tabs/` - base tab markup split into Dashboard, Mine, Ledger, Market, operations and Method ownership.
 - `src/ui/enhance/` - post-render visuals split into Mine/Market, custody and operating-system ownership.

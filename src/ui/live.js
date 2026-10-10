@@ -51,9 +51,9 @@ function refreshDashboardVisuals(){
   if(activeTab!=="dashboard")return;
   const fs=fleet(),treasury=document.getElementById("dashboard-treasury");
   if(treasury)treasury.innerHTML=btcBreakdown();
-  const shareCard=document.getElementById("dashboard-network-share");if(shareCard){const competition=competitiveHashAt(state.time,fs.hash);shareCard.innerHTML=`${donut(playerNetworkShareAt(state.time,fs.hash))}<div class="pie-legend"><span><i class="sw" style="background:var(--orange)"></i>You · ${fmtHash(fs.hash)}</span><span><i class="sw" style="background:#1a2325;border:1px solid var(--line)"></i>Effective competitors · ${fmtHash(competition)}</span></div><p class="modal-note">Historical baseline plus modelled competitive response.</p>`}
+  const shareCard=document.getElementById("dashboard-network-share");if(shareCard){const competition=competitiveHashAt(state.time,fs.hash);shareCard.innerHTML=`${donut(playerNetworkShareAt(state.time,fs.hash))}${networkShareLegendHtml(fs.hash,competition)}<p class="modal-note">Historical baseline plus modelled competitive response.</p>`}
   const marketChart=document.getElementById("dashboard-market-chart");if(marketChart)marketChart.innerHTML=chart(sampled(priceAt),"#f7931a",true,{points:sampled(hashAt),color:"#86c79a",label:"Network hash rate",mainLabel:"BTC/USD"});
-  const historyChart=document.getElementById("dashboard-history-chart");if(historyChart){const history=state.history.length?state.history.map(x=>x.btc):[0,controlled()];historyChart.innerHTML=chart(history,"#86c79a",true)}
+  const historyChart=document.getElementById("dashboard-history-chart");if(historyChart){const history=state.history.length?state.history.map(x=>x.btc):[0,controlled()];historyChart.innerHTML=chart(history,"#86c79a",true,null,SELF_HELD_CHART_KEY)}
   const mempool=document.getElementById("dashboard-mempool");if(mempool)mempool.innerHTML=mempoolViz();
 }
 function refreshSettlementForecast(){

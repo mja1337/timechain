@@ -95,6 +95,21 @@ function priceChartSvg(){
     <g class="dates">${dates}</g>
   </svg>`;
 }
+/* The key names every mark the plot can carry in the current range - the price line, recorded
+   and estimated halvings, and the "now" dot - with the swatch drawn the way the mark is. */
+function priceChartLegend(series){
+  if(series.length<2)return "";
+  const t0=series[0][0],t1=series[series.length-1][0];
+  let recorded=false,projected=false;
+  for(let i=1;i<=33;i++){const time=halvingTimeAt(i);if(time>t1)break;if(time<t0)continue;if(halvingIsProjected(i))projected=true;else recorded=true}
+  const last=series[series.length-1];
+  return chartLegendHtml([
+    {label:"BTC/USD",color:"var(--orange)",style:"area",value:fmtUsd(last[1])},
+    recorded&&{label:"Halving",color:"#5d8873",style:"dash"},
+    projected&&{label:"Halving* (estimated)",color:"#e27bd4",style:"dash"},
+    {label:"Now",color:"var(--orange2)",style:"dot",value:dateFmt(last[0],true)}
+  ],{note:"log scale · USD per bitcoin",label:"Bitcoin price key",className:"price-chart-key"});
+}
 /* Provenance, stated rather than assumed. Everything up to the dataset's cutoff is a
    recorded observation; past it the continuation is a model, and this game labels the two
    separately everywhere else. A chart that says RECORDED over modelled prices is exactly the
@@ -126,8 +141,8 @@ function priceChartCard(){
     </div>`:"";
   return `<section class="card span-12 price-chart-card"><div class="card-head"><h2>Bitcoin price</h2><div class="meta">${priceChartProvenance()} · LOG SCALE · TO ${dateFmt(state.time,true).toUpperCase()}</div></div>
     <div class="price-chart-controls">${PRICE_CHART_RANGES.map(r=>`<button class="action small ${r.id===active?"primary":""}" data-action="price-range" data-value="${r.id}">${r.label}</button>`).join("")}</div>
-    <div class="price-chart-plot">${priceChartSvg()}</div>
-    ${series.length&&series[series.length-1][0]>=halvingTimeAt(5)?`<p class="modal-note price-chart-halving-key"><span class="recorded-halving">Green: recorded halving.</span> <span class="projected-halving">Fuchsia: halving*.</span> *Estimated date, not a recorded event. The model extends the last recorded halving by 210,000 blocks at an assumed ten minutes per block; real dates will vary.</p>`:""}
+    <div class="price-chart-plot">${priceChartLegend(series)}${priceChartSvg()}</div>
+    ${series.length&&series[series.length-1][0]>=halvingTimeAt(5)?`<p class="modal-note price-chart-halving-key"><span class="projected-halving">Halving*</span> is an estimated date, not a recorded event. The model extends the last recorded halving by 210,000 blocks at an assumed ten minutes per block; real dates will vary.</p>`:""}
     ${stats}
     <p class="modal-note">${series.length&&series[series.length-1][0]>END?`Recorded daily observations to ${dateFmt(END,true)}, and a model past it - the continuation is not a forecast. `:"Recorded daily observations from the bundled dataset, "}interpolated the same way every other price in the game is. The series stops at the simulation's current date - this is a historical replay, and what happens next is the question.</p></section>`;
 }
