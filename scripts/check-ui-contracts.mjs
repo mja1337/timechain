@@ -400,44 +400,199 @@ assert(/function skipWalletSetup\(\)\{[\s\S]*?state\.walletSetup\.step=2;save\(\
   "Letting the game generate the key skips the page that shows it and offers the backup");
 assert(inline.includes('typeof hotWalletCard==="function"?hotWalletCard():""') && inline.includes("function hotWalletCard()") && inline.includes('if(key.hot)return showToast("That is your online wallet"'),
   "The online wallet's card is not on the Custody section, or its key can be assigned into a wallet policy");
-// THE TOUR. A new run is walked round every area once, with the clock held, and an old save is not.
+// THE TUTORIAL. A new run is coached through ten short steps, each one real action, with the clock held; by the
+// end the wallet is set up end to end. An old save is not forced into it.
 {
   const tourSource = await readFile(new URL("src/ui/tour.js", root), "utf8");
   const treasurySource = await readFile(new URL("src/ui/tabs/treasury.js", root), "utf8");
-  const ctx = { globalThis: {}, document: { addEventListener() {}, body: { classList: { toggle() {} } } }, window: { addEventListener() {} }, state: { started: true, walletSetup: { done: true } }, activeTab: "dashboard" };
+  const ctx = { globalThis: {}, document: { addEventListener() {}, body: { classList: { toggle() {} } } }, window: { addEventListener() {} }, setInterval() {}, state: { started: true, walletSetup: { done: true } }, activeTab: "dashboard" };
   ctx.globalThis = ctx;
-  vm.runInNewContext(treasurySource + "\n" + tourSource + "\nglobalThis.api={TOUR_STEPS,tourState,tourActive,resolveTab};", ctx);
-  const { TOUR_STEPS, tourState, tourActive, resolveTab } = ctx.api;
-  // The pages the tour points at, without the tour itself: its own selectors would otherwise vouch for themselves.
+  vm.runInNewContext(treasurySource + "\n" + tourSource + "\nglobalThis.api={TOUR_STEPS,tourState,tourActive,resolveTab,normalizeTourState};", ctx);
+  const { TOUR_STEPS, tourState, tourActive, resolveTab, normalizeTourState } = ctx.api;
+  // The pages the tutorial points at, without the tutorial itself: its own selectors would otherwise vouch for themselves.
   const pages = inline.replace(tourSource, "");
   const navTabs = /\["dashboard","mine","pools","treasury"[^\]]*\]/.exec(inline)[0].match(/"([a-z]+)"/g).map(x => x.replace(/"/g, ""));
-  assert(new Set(TOUR_STEPS.map(x => x.id)).size === TOUR_STEPS.length, "Two tour steps share an id");
-  assert(TOUR_STEPS[0].center && TOUR_STEPS[TOUR_STEPS.length - 1].center && TOUR_STEPS[TOUR_STEPS.length - 1].finish, "The tour does not open and close with a centred welcome and a finish");
+  assert(new Set(TOUR_STEPS.map(x => x.id)).size === TOUR_STEPS.length, "Two tutorial steps share an id");
+  assert(TOUR_STEPS.length >= 6 && TOUR_STEPS.length <= 10, `The tutorial should be six to ten short steps, not ${TOUR_STEPS.length}`);
+  assert(TOUR_STEPS[0].center && TOUR_STEPS[TOUR_STEPS.length - 1].finish, "The tutorial does not open with a welcome and close by starting the clock");
+  for (const id of ["hotbackup", "signer", "prepare", "reservekey", "assign", "offsite", "payout", "start"])
+    assert(TOUR_STEPS.some(x => x.id === id), `The tutorial has lost its "${id}" step: it no longer finishes the wallet setup it promises`);
   for (const step of TOUR_STEPS) {
-    assert(step.title && step.body && step.chapter, `Tour step "${step.id}" has no title, body or chapter`);
-    if (step.center && !step.tab) continue;
-    assert(step.tab && navTabs.includes(resolveTab(step.tab).tab), `Tour step "${step.id}" opens "${step.tab}", which is not a tab in the navigation`);
+    assert(step.title && step.body && step.chapter, `Tutorial step "${step.id}" has no title, body or chapter`);
     if (step.center) continue;
-    assert(Array.isArray(step.target) && step.target.length, `Tour step "${step.id}" points at nothing`);
+    // Every step is an action the game can see being done, not a Next button.
+    assert(typeof step.done === "function" && typeof step.act === "function", `Tutorial step "${step.id}" cannot tell when it has been done, or does not say what to do`);
+    assert(step.tab && navTabs.includes(resolveTab(step.tab).tab), `Tutorial step "${step.id}" opens "${step.tab}", which is not a tab in the navigation`);
+    assert(Array.isArray(step.target) && step.target.length, `Tutorial step "${step.id}" points at nothing`);
     for (const t of step.target) {
-      if (typeof t === "string") for (const cls of t.match(/\.[A-Za-z][\w-]*/g) || []) assert(pages.includes(cls.slice(1)), `Tour step "${step.id}" rings ${cls}, which no page draws`);
-      else assert(pages.includes(t.text), `Tour step "${step.id}" rings the card headed "${t.text}", which no page draws`);
+      if (typeof t === "function") continue;
+      for (const cls of t.match(/\.[A-Za-z][\w-]*/g) || []) assert(pages.includes(cls.slice(1)), `Tutorial step "${step.id}" rings ${cls}, which no page draws`);
+      for (const [, action] of t.matchAll(/data-action="([^"]+)"/g)) assert(pages.includes(`data-action="${action}"`) || pages.includes(`workshopButton("${action}"`), `Tutorial step "${step.id}" points at a "${action}" button that no page draws`);
     }
   }
-  const tabsCovered = new Set(TOUR_STEPS.map(x => x.tab && resolveTab(x.tab).tab).filter(Boolean));
-  for (const tab of navTabs) assert(tabsCovered.has(tab), `The tour never visits the "${tab}" tab`);
-  for (const section of ["market", "custody", "finance"]) assert(TOUR_STEPS.some(x => x.tab === section), `The tour never visits the Treasury's ${section} section`);
-  // A save from before the tour has done it; it must not be walked round a game it has been playing for months.
+  // Saves: one from before any tour has done it; one part-way through the old tour starts this one again; one part-way
+  // through this one resumes on the same step, by id.
+  assert(normalizeTourState({}).done === true && normalizeTourState({}).active === false, "A save with no tour record is walked through the tutorial");
+  const oldTour = normalizeTourState({ tour: { active: true, done: false, step: 7, resumeSpeed: 1 } });
+  assert(oldTour.active && oldTour.v === 2 && oldTour.id === TOUR_STEPS[0].id && oldTour.resumeSpeed === 1, "A save part-way through the old tour is not restarted cleanly");
+  const mid = normalizeTourState({ tour: { active: true, done: false, v: 2, id: "assign", step: 0, resumeSpeed: 0 } });
+  assert(TOUR_STEPS[mid.step].id === "assign", "A reload part-way through the tutorial does not resume on the same step");
   ctx.state = { started: true, walletSetup: { done: true } };
-  assert(tourState().done === true && tourActive() === false, "A save with no tour record is walked through the tour");
-  ctx.state = { started: true, walletSetup: { done: true }, tour: { active: true, done: false, step: 3 } };
-  assert(tourActive() === true, "A run that is part-way through the tour is not resumed");
-  ctx.state = { started: true, walletSetup: { done: false }, tour: { active: true, done: false, step: 0 } };
-  assert(tourActive() === false, "The tour opens before the wallet exists");
-  assert(inline.includes('if(a.indexOf("tour-")===0){tourAction(a);return}') && inline.includes('tourAfterRender();') && inline.includes('data-action="tour-start">Tour</button>'),
-    "The tour is not wired to the click handler, the render, or the footer");
-  assert(/state\.walletSetup\.required&&typeof beginTour==="function"\)beginTour\(\)/.test(inline), "A new run no longer starts the tour after its wallet ceremony");
-  assert(inline.includes("function endTour()") && /state\.speed=t\.resumeSpeed/.test(inline), "Ending the tour does not put the clock back");
+  assert(tourState().done === true && tourActive() === false, "A save with no tour record is walked through the tutorial");
+  ctx.state = { started: true, walletSetup: { done: false }, tour: { active: true, done: false, step: 0, v: 2, id: "welcome" } };
+  assert(tourActive() === false, "The tutorial opens before the wallet exists");
+  assert(inline.includes('if(a.indexOf("tour-")===0){tourAction(a);return}') && inline.includes('tourAfterRender();') && inline.includes('data-action="tour-start">Replay tutorial</button>'),
+    "The tutorial is not wired to the click handler, the render, or the footer's Replay tutorial");
+  assert(/state\.walletSetup\.required&&typeof beginTour==="function"\)beginTour\(\)/.test(inline), "A new run no longer starts the tutorial after its wallet ceremony");
+  assert(inline.includes("function endTour(why)") && /state\.speed=t\.resumeSpeed/.test(inline), "Skipping the tutorial does not put the clock back");
+  // Deterministic: the tutorial never draws from the shared random stream.
+  assert(!/nextRand\(|Math\.random\(/.test(tourSource), "The tutorial draws random numbers: a run that takes it would differ from one that skips it");
+  assert(css.includes(".tour-dots") && css.includes(".tour-do{") && /@media\(max-width:800px\)\{\.tour-card\{/.test(css), "The tutorial card has lost its checklist, its instruction or its narrow layout");
+
+  // Played headlessly against the real engine: every step advances on the game's own state, and the end state is a wallet set up end to end.
+  const { loadEngine, makeEval } = await import("./engine-harness.mjs");
+  const sb = loadEngine();
+  sb.addEventListener = () => {}; sb.scrollTo = () => {};
+  const ev = makeEval(sb);
+  vm.runInContext(treasurySource, sb);
+  vm.runInContext(tourSource, sb);
+  ev(`state=initialState();state.started=true;state.cash=2500;state.campaignStart=state.time;state.lastMonth=new Date(state.time).toISOString().slice(0,7);
+      state.walletSetup={done:false,step:0,rolls:[],keyHex:"",required:true,resumeSpeed:1};
+      skipWalletSetup();recordWalletPaper();destroyWalletPaper();takeWalletOath();`);
+  const step = () => ev("tourStep().id");
+  assert(ev("tourActive()") && step() === "welcome" && ev("state.speed") === 0 && ev("state.tour.resumeSpeed") === 1, "A new run's tutorial does not start on the welcome card with the clock held");
+  ev(`tourAction("tour-next")`);
+  assert(step() === "hotbackup" && ev("tourClockAllowed()") === false, "The tutorial does not go from the welcome to backing up the online wallet, or lets the clock run there");
+  ev(`tourAction("tour-next")`);
+  assert(step() === "hotbackup", "A Next button skips a step that has not been done");
+  const rngBefore = ev("state.rng");
+  ev(`backupCustodyKey(hotKey().id,"paperbackup");tourCheck();`);
+  assert(step() === "signer", "Backing up the online wallet does not advance the tutorial");
+  ev(`orderCustodyProduct(tourCheapestSigner().id);tourCheck();`);
+  assert(ev("tourClockAllowed()") === true && ev("state.rng") === rngBefore, "Ordering a signer does not let the clock run for its delivery, or the tutorial drew a random number");
+  ev(`state.speed=1;for(let i=0;i<40&&!tourSigners().length;i++)tick(true);tourCheck();`);
+  assert(step() === "prepare" && ev("state.speed") === 0, "The signer's delivery does not stop the clock and move the tutorial on");
+  ev(`const d=tourSigners()[0];inspectWorkshopDevice(d.uid);tourCheck();`);
+  assert(step() === "prepare", "Inspecting alone counts as preparing the signer");
+  ev(`prepareWorkshopDevice(tourSigners()[0].uid);tourCheck();`);
+  assert(step() === "reservekey", "Preparing the signer does not advance the tutorial");
+  ev(`generateCustodyKey(tourSigners()[0].uid);tourCheck();`);
+  assert(step() === "reservekey", "A reserve key with no backup counts as done");
+  ev(`backupCustodyKey(tourSigners()[0].keyId,"paperbackup");tourCheck();`);
+  assert(step() === "assign", "Writing the reserve key down does not advance the tutorial");
+  ev(`assignCustodyKey(tourSigners()[0].keyId);tourCheck();`);
+  assert(step() === "offsite", "Assigning the reserve key does not advance the tutorial");
+  ev(`moveCustodyItem("backup",hotKey().id,"bank");tourCheck();`);
+  assert(step() === "offsite", "One backup leaving the mine counts as both");
+  ev(`moveCustodyItem("backup",tourSigners()[0].keyId,"trusted");tourCheck();`);
+  assert(step() === "payout", "Sending the backups away does not advance the tutorial");
+  ev(`setPayoutDestination("cold");tourCheck();`);
+  assert(step() === "start" && ev("tourClockAllowed()") === true, "Choosing where income lands does not reach the last step, or the last step will not let the clock start");
+  ev(`state.speed=1;tourCheck();`);
+  assert(!ev("tourActive()") && ev("state.tour.done") === true && ev("state.speed") === 1, "Pressing play on the last step does not finish the tutorial and leave the clock running");
+  const end = JSON.parse(ev(`JSON.stringify({hot:hotKeyBackedUp(),ready:custodySetup().ready,away:tourBackupsAtMine().length===0&&custodyAssignedKeys().length===1,prepared:tourSigners().every(d=>workshopPrepared(d)),dest:poolAccount().destination})`));
+  assert(end.hot && end.ready && end.away && end.prepared && end.dest === "cold", `The tutorial finished without a fully set up wallet: ${JSON.stringify(end)}`);
+
+  // NEVER STUCK. Each blocker the tutorial can meet, played once by name; then thousands of randomly interfered runs.
+  const freshRun = (cash = 2500) => ev(`state=initialState();state.started=true;state.cash=${cash};state.campaignStart=state.time;state.lastMonth=new Date(state.time).toISOString().slice(0,7);
+      state.walletSetup={done:false,step:0,rolls:[],keyHex:"",required:true,resumeSpeed:1};
+      skipWalletSetup();recordWalletPaper();destroyWalletPaper();takeWalletOath();tourAction("tour-next");`);
+  const act = () => JSON.parse(ev(`JSON.stringify((a=>a?{label:a.label||"",wait:!!a.wait}:null)(tourNextAction()))`));
+  const doIt = () => ev(`tourAction("tour-do");tourCheck();`);
+  const deliver = `for(let i=0;i<40&&state.custody.orders.length;i++){tourCheck();tick(true)}tourCheck();`;
+  const toOffsite = `backupCustodyKey(hotKey().id,"paperbackup");tourCheck();orderCustodyProduct(tourCheapestSigner().id);tourCheck();${deliver}
+      inspectWorkshopDevice(tourSigners()[0].uid);prepareWorkshopDevice(tourSigners()[0].uid);tourCheck();
+      generateCustodyKey(tourSigners()[0].uid);backupCustodyKey(tourSigners()[0].keyId,"paperbackup");tourCheck();
+      assignCustodyKey(tourSigners()[0].keyId);tourCheck();`;
+  // Cash. The signer's price is set aside from the player's own cash when the tutorial starts, so spending everything
+  // else cannot leave the signer step without a way on; skipping hands it back. Nothing is gifted.
+  freshRun(1500);
+  assert(ev("state.cash") === 1325 && ev("tourEscrow()") === 175 && ev("netWorth()") === ev("state.cash+175-state.debt"), "The tutorial does not set the signer's price aside from cash when it starts, or the hold drops out of net worth");
+  vm.runInContext(await readFile(new URL("src/ui/topbar-cash.js", root), "utf8"), sb);
+  if (ev("typeof fmtCompactUsd") !== "function") ev(`globalThis.fmtCompactUsd=v=>"$"+Math.round(v)`); // presentation.js formats it in the page
+  assert(/held for signer/.test(ev("topbarCashState().note")), "The top bar does not say that the signer's money is held");
+  ev(`state.cash=3;backupCustodyKey(hotKey().id,"paperbackup");tourCheck();`);
+  assert(step() === "signer" && act() && /Order/.test(act().label), "With the cash spent, the signer step has no order to place");
+  doIt();
+  assert(ev("state.custody.orders.length") === 1 && ev("state.cash") === 3 && ev("tourEscrow()") === 0, "The signer order does not draw on the money held for it");
+  assert(act().wait && ev("tourClockAllowed()") && ev("state.speed") > 0, "The tutorial does not run the clock while the signer is on its way");
+  freshRun(1500); ev(`tourAction("tour-skip")`);
+  assert(ev("state.cash") === 1500 && ev("tourEscrow()") === 0, "Skipping the tutorial does not hand back the money held for the signer");
+  // A replay begun with too little cash for a signer is never refused: the tutorial puts one on the floor, silently.
+  ev(`state.cash=20;toasts=0;{const st=showToast;globalThis.showToast=(...a)=>{toasts++;return st(...a)};globalThis.__st=st}tourAction("tour-start");`);
+  assert(ev("tourActive()") && ev("state.cash") === 20 && ev("state.tour.provided") === 1 && ev("tourSigners().length") === 1 && ev("toasts") === 0, "A replay with too little cash for a signer is refused, charged, or announced");
+  ev(`globalThis.showToast=__st`);
+  // A signer destroyed before its key, with cash at ~0: a replacement appears without a word and the tutorial goes on.
+  freshRun(1500);
+  ev(`backupCustodyKey(hotKey().id,"paperbackup");tourCheck();tourAction("tour-do");${deliver}state.cash=4;`);
+  assert(step() === "prepare" && ev("state.tour.provided|0") === 0, "The signer step did not deliver the ordered signer");
+  ev(`toasts=0;globalThis.showToast=(...a)=>{toasts++;return __st(...a)};tourSigners()[0].destroyed=true;tourCheck();`);
+  assert(step() === "prepare" && ev("tourSigners().length") === 1 && ev("state.tour.provided") === 1 && ev("tourSigners()[0].tourProvided") === true && ev("toasts") === 0 && ev("state.cash") === 4, "A signer lost before its key with no cash to replace it stops the tutorial, or the replacement is announced or charged");
+  // Not when the player can pay (the randomised check below also holds it to: never while they have an unused signer).
+  ev(`globalThis.showToast=__st;`);
+  ev(`state.cash=500;tourSigners()[0].destroyed=true;tourCheck();`);
+  assert(ev("state.tour.provided") === 1 && step() === "signer" && ev("tourEscrow()") === 175, "A lost signer is replaced for free when the player can pay for one");
+  // Late replay: the recorded history ends before any signer could arrive; the one ordered arrives now, and the tutorial finishes.
+  freshRun(1500); ev(`tourAction("tour-skip");state.time=END-DAY/2;state.cash=1500;tourAction("tour-start");`);
+  assert(ev("tourActive()") && !ev("tourSignerCanArrive()"), "A late replay is refused");
+  for (let i = 0; i < 40 && ev("tourActive()"); i++) ev(`tourCheck();{const s=tourStep();if(s.center||tourDone(s))tourAction("tour-next");else tourAction("tour-do")}tourCheck();`);
+  assert(!ev("tourActive()") && ev("state.tour.done") && !ev("state.ended") && ev("custodySetup().ready") && ev("tourBackupsAtMine().length") === 0 && ev("state.tour.provided|0") === 0 && ev("state.cash") === 1325, "A replay hours before the end of the record does not finish with the wallet set up and the signer paid for");
+  // A second signer ordered (and delivered, and given a written-down key of its own) half-way through step 8.
+  freshRun(); ev(toOffsite);
+  assert(step() === "offsite", "The robustness run did not reach the off-site step");
+  ev(`moveCustodyItem("backup",hotKey().id,"bank");tourCheck();orderCustodyProduct(tourCheapestSigner().id);tourCheck();`);
+  assert(step() === "offsite" && ev("tourClockAllowed()") === false && !act().wait, "Ordering a second signer during step 8 moves the tutorial, or makes it wait for the delivery");
+  ev(`state.speed=1;${deliver}{const d=tourSigners().find(x=>!x.keyId);inspectWorkshopDevice(d.uid);prepareWorkshopDevice(d.uid);generateCustodyKey(d.uid);backupCustodyKey(d.keyId,"paperbackup");}tourCheck();`);
+  assert(step() === "offsite" && ev("tourBackupsAtMine().length") === 1 && ev("tourBackupsAtMine()[0].id===custodySetup().assigned[0].id") && act() && act().label, "With a second key, step 8 asks for a backup that is not in charge of the reserve, or has nothing to press");
+  // Key unassigned at step 8: back to the step that is now open, saying so, and its button puts a key back.
+  ev(`unassignCustodyKey(custodySetup().assigned[0].id);tourCheck();`);
+  assert(step() === "assign" && ev("state.tour.notice").length > 0 && act() && /Assign/.test(act().label), "Unassigning the key at step 8 does not take the card back to the assign step with a reason and a button");
+  doIt();
+  assert(step() === "offsite", "Reassigning a key from the card does not return to step 8");
+  // The reserve's rule set to 2-of-3 with one key: the card offers to start with a single signature.
+  ev(`state.skills.push("multisig");setCustodyPolicy("2of3");tourCheck();`);
+  assert(step() === "assign" && /single/.test(act().label), "A 2-of-3 rule with one key leaves the assign step with no way on");
+  doIt();
+  assert(step() === "offsite", "Switching to a single signature from the card does not finish the assign step");
+  // Reload mid-step: same card, same next action.
+  { const before = act().label; ev(`state=JSON.parse(JSON.stringify(state));normalizeTourState(state);tourCheck();`); assert(step() === "offsite" && act().label === before, "A reload mid-step lands on a different card or action"); }
+  // Something on screen (a chapter, a bill, a loss) holds the card: nothing moves until it is closed.
+  ev(`state.activeEvent=EVENTS[0].id;tourAction("tour-do");tourCheck();`);
+  assert(step() === "offsite" && ev("tourBackupsAtMine().length") === 1 && ev("state.speed") === 0, "The card acts or runs the clock behind an open chapter");
+  ev(`state.activeEvent=null;tourCheck();`);
+  for (let i = 0; i < 3 && step() === "offsite"; i++) doIt();
+  assert(step() === "payout", "Step 8's button does not send the backups away");
+  // Back is free to look; Next returns to the first step still to do.
+  ev(`tourAction("tour-back");tourAction("tour-back");tourAction("tour-back");tourCheck();`);
+  assert(step() === "reservekey" && ev("state.tour.arrivedDone") === true, "Back does not walk one step at a time onto done steps, or a done step moves on by itself");
+  ev(`tourAction("tour-next");`);
+  assert(step() === "payout", "Next from an earlier done step does not skip to the first step still to do");
+  doIt(); doIt();
+  assert(!ev("tourActive()") && ev("state.tour.done") === true && ev("state.speed") === 1, "The card's buttons on the last two steps do not finish the tutorial with the clock running");
+  // Out of order: everything done before the tutorial asks for it, then one check lands on the last step.
+  freshRun();
+  ev(`orderCustodyProduct(tourCheapestSigner().id);tourCheck();`);
+  assert(step() === "hotbackup" && ev("tourClockAllowed()") === false && ev("tourEscrow()") === 0, "Ordering the signer early lets the clock run on the backup step, or keeps holding its money");
+  ev(`backupCustodyKey(hotKey().id,"paperbackup");tourCheck();`);
+  assert(step() === "signer" && ev("tourClockAllowed()") === true, "A signer ordered early is not recognised on the signer step");
+  ev(`${deliver}{const d=tourSigners()[0];inspectWorkshopDevice(d.uid);prepareWorkshopDevice(d.uid);generateCustodyKey(d.uid);backupCustodyKey(d.keyId,"paperbackup");assignCustodyKey(d.keyId);
+      moveCustodyItem("backup",hotKey().id,"bank");moveCustodyItem("backup",d.keyId,"bank");}setPayoutDestination("cold");tourCheck();`);
+  assert(step() === "start", `Steps done out of order are not passed over: the tutorial is on "${step()}"`);
+  // The run ends under the tutorial: it ends too, with the hold handed back.
+  freshRun(1500); ev(`state.ended=true;tourCheck();`);
+  assert(!ev("state.tour.active") && ev("state.cash") === 1500 && ev("tourEscrow()") === 0, "A run that ends does not end the tutorial with the signer's money handed back");
+  // No escape hatch: Next only on a step that is done, and every other card carries the button that does its step.
+  assert(!/tourStuck|reserveKeys/.test(tourSource) && /if\(s\.center\|\|tourDone\(s\)\)tourForward\(\)/.test(tourSource) && tourSource.includes('data-action="tour-do"'), "The tutorial offers Next on a step that is not done, or a card has lost its action button");
+  assert(inline.includes('if(typeof tourReleaseFor==="function")tourReleaseFor(p,qty);') && ["custody-order.js", "keys.js", "workshop.js"].every(f => !new RegExp(`state\\.cash<custodyUnitCost`).test(inline.split(f)[1] || "")), "Signer purchases do not draw on the tutorial's hold");
+
+  // THE GUARANTEE, by property: many start dates, new runs and replays, a separate seeded random stream, random
+  // interference; at every point the current step has a progressing action, and following the card finishes the wallet.
+  const { runTutorialGuarantee } = await import("./tutorial-guarantee.mjs");
+  const g = runTutorialGuarantee({ tourSource, treasurySource, seedsPerCase: 16 });
+  assert(g.refused === 0 && g.honestStops === 0, `The tutorial refused a replay or stopped itself: ${JSON.stringify(g)}`);
+  assert(g.failures.length === 0, `The tutorial can get stuck (${g.failures.length} of ${g.scenarios} randomised runs):\n  ${g.failures.slice(0, 8).join("\n  ")}`);
+  assert(g.scenarios >= 800 && g.completed >= g.scenarios / 2 && g.clean >= 40 && g.interferences >= 5000, `The tutorial guarantee ran too little to mean anything: ${JSON.stringify(g)}`);
+  console.log(`Tutorial guarantee: ${g.scenarios} randomised runs (${g.interferences} interferences, ${g.actions} card actions): ${g.completed} finished with the wallet set up, ${g.endedWithRun} ended with the run, ${g.skipped} skipped; ${g.provided} signers provided silently; 0 stuck, 0 stopped by the tutorial, 0 replays refused.`);
 }
 for (const act of ["settle-btc","settle-liquidate","settle-bridge","settle-defer","settle-receivership"]) {
   assert(inline.includes(`action:"${act}"`) && inline.includes(`a==="${act}"`),
@@ -1024,7 +1179,35 @@ assert(inline.includes("function rivalLandscapeCard()") && inline.includes("RIVA
 assert(inline.includes("function milestonesLedgerSection()") && inline.includes("${milestonesLedgerSection()}"), "Milestone list is missing from the Ledger tab");
 assert(inline.includes("const WALLET_SOFTWARE=[") && inline.includes('id:"modern"') && inline.includes("function walletSoftwareTierAt("), "Wallet software lineage data or tier-lookup helper is missing");
 assert(inline.includes("function rollDie()") && inline.includes("crypto.getRandomValues"), "Dice-roll entropy ceremony is not using real browser randomness");
-assert(inline.includes("function recordDieRoll(value)") && inline.includes("wallet-paper-recorded") && inline.includes("wallet-paper-destroyed") && inline.includes("wallet-oath") && inline.includes("data-dice-face"), "The key ceremony no longer teaches physical dice, temporary paper handling and the key-holder oath");
+assert(inline.includes("wallet-paper-recorded") && inline.includes("wallet-paper-destroyed") && inline.includes("wallet-oath"), "The key ceremony no longer teaches temporary paper handling and the key-holder oath");
+// THE CEREMONY DIE. Press and hold to shake, release to roll; the player never chooses the face.
+{
+  const dice = await readFile(new URL("src/ui/dice-shake.js", root), "utf8");
+  const diceCode = dice.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
+  // No face-picking control remains anywhere: no per-face buttons, no typed face, no action that records a chosen value.
+  assert(!/dice-record|data-dice-face|die-choice|recordDieRoll/.test(inline + css), "A control that lets the player pick the die's face is still in the game");
+  assert(/data-dice-roller/.test(inline) && (inline.match(/data-dice-roller aria-describedby/g) || []).length === 1, "The ceremony has no single die to press and hold");
+  // The face comes from rollDie(), which takes nothing from the player, and the release passes it nothing: hold time is animation only.
+  assert(/function rollDie\(\)\{[\s\S]{0,200}const face=secureDice\(1\)\[0\];/.test(inline) && /const face=rollDie\(\);/.test(dice) && (diceCode.match(/rollDie\(/g) || []).length === 1,
+    "The die's face is not drawn by rollDie() from secureDice at release, or the release can pass it something (hold time must not reach the result)");
+  assert(!/nextRand\(|Math\.random\(/.test(dice), "The ceremony die draws from the game's seeded stream or Math.random");
+  // Input: pointer (mouse/touch/pen) and keyboard hold; touch holds neither scroll nor open a menu.
+  for (const ev of ['"pointerdown"', '"pointerup"', '"pointercancel"', '"contextmenu"', '"keydown"', '"keyup"']) assert(dice.includes(`addEventListener(${ev}`), `The ceremony die does not listen for ${ev}`);
+  assert(/\.die-roller\{[^}]*touch-action:none[^}]*-webkit-touch-callout:none/.test(css) && /\.dice-stage\{[^}]*height:156px/.test(css), "Holding the die on a phone can scroll the page or open a menu, or its box is not fixed (layout shift)");
+  // Reduced motion: no shake transform, a short flicker instead; and the result is announced in a live region outside #app.
+  assert(/rm:diceReducedMotion\(\)/.test(dice) && /if\(!diceAnim\.rm\)requestAnimationFrame\(diceShakeFrame\)/.test(dice) && /@media\(prefers-reduced-motion:reduce\)\{\.die-roller\.is-tumbling \.die-svg/.test(css) && css.includes("@keyframes die-flicker"),
+    "The ceremony die has no reduced-motion path");
+  assert(/aria-live","polite"/.test(dice) && /document\.body\.appendChild\(live\)/.test(dice) && inline.includes("Press and hold to shake, release to roll"), "The roll is not announced, or the die has no instruction");
+  // Played headlessly: rollDie() takes no input, gives 1-6, never touches the seeded stream, and over many throws every face turns up.
+  const { loadEngine, makeEval } = await import("./engine-harness.mjs");
+  const diceSb = loadEngine(); diceSb.crypto = globalThis.crypto; // the harness zero-fills crypto for repeatability; use the real one here
+  const dev = makeEval(diceSb);
+  dev(`state=initialState();state.started=true;state.rng=777;state.walletSetup={done:false,step:1,rolls:[],keyHex:"",required:true};`);
+  const r = JSON.parse(dev(`(()=>{const seen=[0,0,0,0,0,0,0];for(let i=0;i<99;i++)seen[rollDie()]++;const over=rollDie();
+      state.walletSetup.rolls=[];for(let n=0;n<6;n++){for(let i=0;i<99;i++)seen[rollDie()]++;state.walletSetup.rolls=[]}
+      return JSON.stringify({len:rollDie.length,seen,over,rng:state.rng})})()`));
+  assert(r.len === 0 && r.over === 0 && r.seen[0] === 0 && r.seen.slice(1).every(n => n > 60) && r.rng === 777, `The ceremony die is not a fair, input-free, seed-free throw: ${JSON.stringify(r)}`);
+}
 assert(inline.includes("function walletSetupModal()") && inline.includes("state.started&&!state.walletSetup.done?walletSetupModal()"), "Wallet-setup ceremony is not wired into the modal stack");
 assert(inline.includes('log(`Upgraded to ${tier.name}`,"+1 skill point","milestone")') && inline.includes('showToast(`Upgraded to ${tier.name}`') , "Wallet-software upgrades do not use the milestone reward convention");
 assert(!inline.includes('"Bitcoin Core runs on the Basic laptop') && !inline.includes('"Bitcoin Core shares the mining laptop"'), "Wallet-client copy is still hardcoded to Bitcoin Core regardless of the in-game date");
@@ -1859,8 +2042,8 @@ assert(css.includes(".svg-sprite-defs{position:absolute;width:0;height:0;overflo
     "Bootstrap no longer says the first render succeeded, or the recovery page no longer checks");
   for (const label of ["Export my save", "Start a new run", "Try again", "Copy debug info"]) assert(recovery.includes(label), `The recovery page lost its "${label}" button`);
   assert(!/(^|[^.\w])fetch\(|XMLHttpRequest|sendBeacon/.test(recovery + footer), "Feedback and recovery must not send anything: they only link out and copy text");
-  // The tour's promise that the clock is held.
-  assert(events.includes('if(a==="speed"&&Number(v)>0&&tourActive())'), "The speed buttons start the clock during the tour again");
+  // The tutorial's promise that the clock is held, except on a step that needs time to pass.
+  assert(events.includes('if(a==="speed"&&Number(v)>0&&tourActive()&&!tourClockAllowed())'), "The speed buttons start the clock during the tutorial again");
   // Leaving the tab pauses the game; it does not fast-forward on return.
   assert(/visibilityState==="hidden"[\s\S]*state\.speed=0/.test(bootstrap) && !/tick\(true\)/.test(bootstrap), "A hidden tab no longer pauses the game, or the catch-up burst is back");
   // The footer: feedback, debug text and what is stored.
@@ -1886,7 +2069,7 @@ assert(css.includes(".svg-sprite-defs{position:absolute;width:0;height:0;overflo
   assert(inline.includes('id:"beigepc"') && inline.includes("function coldDepositBlockReason()") && !inline.includes("Cold storage practices unlock in 2012"), "Cold storage is gated on 2012 again, or the early signer is gone");
   assert(inline.includes("function coldSetupCard()") && inline.includes("const CUSTODY_GROUPS=[") && inline.includes("orderCustodyCards(grid)"), "The Custody section has lost its step-by-step card or its order");
   assert(inline.includes('data-action="workshop-focus"') && inline.includes("function focusWorkshopDevice(group,uid)") && inline.includes('scrollIntoView({behavior:"smooth",block:"start"})'), "The cold-storage signer shortcut no longer opens and focuses the selected workshop device");
-  assert(inline.includes('id:"coldsetup"') && inline.includes('id:"custodypage"'), "The tour no longer explains cold storage and the shape of the Custody page");
+  assert(inline.includes('id:"signer"') && inline.includes('id:"reservekey"') && inline.includes('id:"assign"'), "The tutorial no longer walks a new run through setting up cold storage");
   assert(inline.includes('id:"cold-storage"') && inline.includes("const HOT_GRACE_DAYS=60"), "The cold storage briefing or the online wallet's grace period has gone");
   assert(inline.includes("function lossOddsText(o)") && inline.includes('class="modal-odds"'), "The loss modal no longer says how likely the loss was");
   // Disasters are drawn, not just described: an emblem in the loss window and an overlay on the floor, still when motion is reduced.
@@ -1964,4 +2147,29 @@ assert(css.includes(".svg-sprite-defs{position:absolute;width:0;height:0;overflo
   assert(/function save\(\)\{[^}]*return writeSave\(state\)\}/.test(inline), "save() no longer reports whether the game was stored");
 }
 
+// CHART KEYS. Every chart draws its key through one helper, with the swatch in the series' own
+// style. The hand-rolled keys it replaced drew solid swatches for dashed lines, a Finance swatch
+// that matched no segment of its bar, and a tariff "forecast" dash for lines that were never dashed.
+assert(inline.includes("function chartLegendHtml(items,opts={})") && css.includes(".chart-key-swatch.is-dash:before{border-top-style:dashed}"), "The shared chart key helper or its dashed swatch is missing");
+for (const legacy of ['class="pie-legend"', 'class="pool-legend"', 'class="mp-legend2"', 'class="energy-model-legend"', 'class="exposure-legend"', 'class="chart-legend"'])
+  assert(!inline.includes(legacy), `A chart has gone back to a hand-rolled key (${legacy}); use chartLegendHtml()`);
+assert(inline.includes('<polyline class="${cls} forecast"') && css.includes(".energy-model-line.forecast{stroke-dasharray:5 4}"), "The tariff model's forecast runs are not drawn dashed, so its replay/forecast key describes nothing on the plot");
+assert(inline.includes('label:overlay.label||"Network hash rate",color:overlay.color||"#86c79a",style:"dash"'), "The Dashboard price chart's hash-rate key no longer matches its dashed line");
+// Phone-width charts: axis text is HTML at a fixed size beside a stretched SVG, so it is never squashed and the plot never scrolls sideways.
+{
+  const priceSrc = await readFile(new URL("src/ui/enhance/price-chart.js", root), "utf8");
+  assert(!/<text[\s>]/.test(priceSrc) && priceSrc.includes('class="chart-yaxis price-chart-yaxis"') && priceSrc.includes('class="chart-xaxis price-chart-dates"'), "The price chart draws its axis text inside the stretched SVG again (about 4px on a phone)");
+  assert(inline.includes('class="chart-yaxis energy-model-ylabels"') && inline.includes('class="chart-xaxis energy-model-xlabels"') && !css.includes("min-width:560px") && !css.includes(".energy-model-chart{overflow-x:auto}"), "The tariff model chart has a fixed minimum width or SVG axis text again, so F1-F4 scroll off a phone");
+  assert(/\.chart-yaxis span\{[^}]*font:10px/.test(css) && /\.chart-xaxis span\{[^}]*font:10px/.test(css), "Chart axis labels are smaller than 10px");
+}
+assert(inline.includes('<span class="era-short">${eraShortAt(state.time)}</span>') && css.includes(".era-chip strong{white-space:nowrap;") && css.includes("@container (max-width:250px){.era-chip .era-full{display:none}"), "The topbar era label can wrap again beside the cash readout");
+// The tariff model's monthly bill is a daily bill times days in a month, never times the millisecond month span.
+assert(!inline.includes("24*rate-credit)*month/30.4375") && inline.includes("24*rate-credit)*30.4375}"), "The six-month tariff model scales its monthly bill by a millisecond span again");
+// CASH IN THE TOPBAR. The ticker that carries "Cash available" scrolls away on a desktop and is
+// hidden on a phone, so the sticky topbar carries the spendable figure on every tab, refreshed each
+// tick, in fixed-width tabular figures so it cannot jostle the clock and speed controls.
+assert(inline.includes("${topbarCashHtml(forecast)}") && inline.includes("refreshTopbarCash(forecast);"), "The topbar cash readout is not rendered in the header or not refreshed by the live tick");
+assert(inline.includes('id="topbar-cash-full" class="cash-full">${fmtUsd(state.cash)}') && inline.includes('id="topbar-cash-compact" class="cash-compact">${fmtCompactUsd(state.cash)}'), "The topbar cash readout must show state.cash - the only money purchases and bills draw on - and nothing added to it");
+assert(/\.topbar-cash strong\{[^}]*font-variant-numeric:tabular-nums[^}]*min-width:11ch/.test(css) && /\.topbar-cash\{[^}]*width:152px/.test(css), "The topbar cash figure has lost its tabular, fixed-width box, so a ticking number will shift the topbar");
+assert(/@media\(max-width:800px\)\{\.topbar-cash\{[^}]*\}\.topbar-cash \.cash-full,\.topbar-cash small\{display:none\}\.topbar-cash \.cash-compact\{display:inline\}/.test(css), "On a phone the topbar cash readout must switch to the compact figure");
 console.log("UI contracts passed: Mine purchases, difficulty and mobile speed controls, transaction precision, enhancement guards, mempool containment, fleet servicing, repair labour, overdrive, Method coverage, speed-resume safety, the exchange trade-ticket flow, network-hash display parity, bad-event impact effects, timed facility-upgrade risk, mining-floor connectivity/power status, the 100-year procedural sandbox continuation, pool fee display, pool shutdown fail-over, the custody transfer slider, Lightning gating, live market pricing, mempool realism, disabled-control tooltips, the single-venue market redesign, Mine-tab scroll stability, full-refurbishment puzzle consistency, the proactive settlement warning, connectivity ping, the unified incoming-fleet pipeline, proportional fleet-health severity colors, rival operators, milestone moments, the end-of-run recap, cross-run career persistence, the dice-entropy wallet-setup ceremony, the era-accurate wallet-software upgrade path, the resetGame() operator-era crash fix, the real mailing-list learning items, the Dashboard build-queue card, hands-on self-servicing before technicians are hired, the fault-clearing/offline-threshold repair fix, the non-blocking faucet popup, tiered spare parts, the historically-grounded custody/region exposure warnings, free self-serviced labour with real self-damage risk, the four hardware self-help skills, staff dismissal the operator XP/level system, dated pool payout schemes, one drawing per machine, and scroll-anchored, frame-aligned repaints");

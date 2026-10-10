@@ -54,9 +54,12 @@ const expectedScripts = [
   "src/ui/transaction-preview.js",
   "src/engine/recap.js",
   "src/ui/notify.js",
+  /* Before presentation.js: every chart draws its key through this one helper. */
+  "src/ui/chart-legend.js",
   "src/ui/presentation.js",
   "src/ui/art.js",
   "src/ui/disaster-art.js",
+  "src/ui/topbar-cash.js",
   "src/ui/tabs/dashboard.js",
   "src/ui/tabs/pools.js",
   "src/ui/tabs/mine.js",
@@ -99,6 +102,8 @@ const expectedScripts = [
   "src/ui/event-modals.js",
   "src/ui/admin-config.js",
   "src/ui/render.js",
+  /* After render.js, whose ceremony modal it animates; before events.js. */
+  "src/ui/dice-shake.js",
   "src/app/events.js",
   "src/app/bootstrap.js",
 ];

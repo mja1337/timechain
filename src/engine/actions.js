@@ -371,20 +371,16 @@ function secureDice(count){
   while(rolls.length<count){crypto.getRandomValues(buf);for(const b of buf)if(b<252&&rolls.length<count)rolls.push((b%6)+1)}
   return rolls;
 }
+/* One throw of the ceremony die. It takes no argument: the face is drawn here from secureDice, at the moment of the
+   throw, so the player cannot choose it, and how long the die was shaken plays no part (the shake and the tumble are
+   animation only, in src/ui/dice-shake.js). It is recorded at once, so a reload mid-tumble keeps it; the page draws
+   it when the die settles. Returns the face, or 0 if no throw is due. */
 function rollDie(){
-  if(state.walletSetup.done||state.walletSetup.rolls.length>=99)return;
-  state.walletSetup.rolls.push(secureDice(1)[0]);
-  save();render();
-}
-function recordDieRoll(value){
   const w=state.walletSetup;
-  const face=Math.floor(Number(value));
-  if(w.done||w.step!==1||w.diceRolling||!Number.isInteger(face)||face<1||face>6)return;
-  w.diceRolling=true;w.diceFace=face;render();
-  setTimeout(()=>{
-    if(state.walletSetup!==w||w.done||w.step!==1)return;
-    w.rolls.push(face);w.diceRolling=false;save();render();
-  },850);
+  if(!w||w.done||w.step!==1||w.rolls.length>=99)return 0;
+  const face=secureDice(1)[0];
+  w.rolls.push(face);save();
+  return face;
 }
 function finishRolling(){
   if(state.walletSetup.done||state.walletSetup.rolls.length<8)return;

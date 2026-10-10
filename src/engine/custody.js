@@ -186,6 +186,8 @@ function custodyLeadDays(p){
   const base=p.lead||0;
   return Math.max(0,Math.round(base*(hasSkill("supplychain")?.6:1)));
 }
+/* Cash a custody purchase can draw on: cash, plus what the tutorial is holding aside when the purchase is a signer. */
+function custodyCash(p){return state.cash+(p&&p.kind==="signer"&&typeof tourEscrow==="function"?tourEscrow():0)}
 function custodyUnitCost(p){return (p.cost||0)*(hasSkill("procurement")?.94:1)*(hasStaff("procurementlead")?.95:1)}
 
 function orderCustodyProduct(id,qty=1){
@@ -193,6 +195,8 @@ function orderCustodyProduct(id,qty=1){
   if(!p||p.build)return;
   if(!custodyProductAvailable(p))return showToast("Not available yet",`${p.name} does not exist until ${dateFmt(at(p.date),true)}.`);
   qty=Math.max(1,Math.floor(Number(qty)||1));
+  // The tutorial holds a signer's price aside from cash; this is the purchase it is held for.
+  if(typeof tourReleaseFor==="function")tourReleaseFor(p,qty);
   // Some things are one-offs: there is one old PC in the basement.
   if(custodyOnceBlocked(p))return showToast("There is only the one",`You already have ${p.name}. Buy a signer if you need another.`,"blocked","custody");
   const unit=custodyUnitCost(p),cost=unit*qty;

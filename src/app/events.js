@@ -24,8 +24,9 @@ document.getElementById("app").addEventListener("click",e=>{
   if(a==="activity-more"){activityLimit+=100;render();return}
   if(a==="starting-mode"){if(STARTING_MODES.some(mode=>mode.id===v)){introDifficulty=v;introStep=1;render()}return}
   if(a.indexOf("tour-")===0){tourAction(a);return}
-  // The tour promises the clock is held, so the speed buttons say so rather than quietly starting it. Pausing is always allowed.
-  if(a==="speed"&&Number(v)>0&&tourActive()){showToast("The tour is holding the clock","Finish or skip the tour to start playing.","blocked");return}
+  // The tutorial promises the clock is held, so the speed buttons say so rather than quietly starting it. Pausing is always allowed,
+  // and a step that needs time to pass (a delivery, or pressing play at the end) lets it run.
+  if(a==="speed"&&Number(v)>0&&tourActive()&&!tourClockAllowed()){showToast("The tutorial is holding the clock","Do what the tutorial card asks, or skip the tutorial to start playing.","blocked");return}
   if(a==="copy-debug"){copyDebugInfo(b);return}
   if(a==="export-unreadable"){const raw=unreadableSaveText();if(raw)downloadText(raw,"timechain-save-unreadable.json");return}
   if(a==="save-notice-dismiss"){saveProblem=null;render();return}
@@ -37,9 +38,7 @@ document.getElementById("app").addEventListener("click",e=>{
   else if(a==="intro-back"){introStep=Math.max(0,introStep-1);render()}
   else if(a==="wallet-demo"){state.walletSetup={done:false,step:0,rolls:[],keyHex:"",demo:true,resumeSpeed:state.speed};state.speed=0;save();setTimer();render()}
   else if(a==="wallet-setup-start"){state.walletSetup.step=1;save();render()}
-  else if(a==="dice-roll")rollDie();
-  else if(a==="dice-record")recordDieRoll(v||document.querySelector("[data-dice-face]")?.value);
-  else if(a==="dice-finish")finishRolling();
+  else if(a==="dice-finish"){if(typeof diceBusy==="function"&&diceBusy())return;finishRolling()}
   else if(a==="wallet-paper-recorded")recordWalletPaper();
   else if(a==="wallet-paper-destroyed")destroyWalletPaper();
   else if(a==="wallet-oath")takeWalletOath();

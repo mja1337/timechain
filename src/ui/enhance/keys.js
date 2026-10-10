@@ -60,7 +60,7 @@ function custodyShopCard(){
       const leaked=custodySupplierExposed(p.supplier);
       return `<article class="venue"><div class="risk ${leaked?"high":"low"}">${CUSTODY_SUPPLIERS[p.supplier]?.name||p.supplier}${leaked?" · RECORDS LEAKED":""}</div>
         <h3>${p.name}</h3><p>${p.desc}</p>
-        <div class="actions"><button class="action small" data-action="custody-buy" data-id="${p.id}"${state.cash<cost||custodyOnceBlocked(p)?" disabled":""}>${p.acquire?`${custodyAcquireLabel(p)} · ${lead}d`:`Order · ${cost>0?fmtUsd(cost):"free"}${lead?` · ${lead}d`:""}`}</button>
+        <div class="actions"><button class="action small" data-action="custody-buy" data-id="${p.id}"${custodyCash(p)<cost||custodyOnceBlocked(p)?" disabled":""}>${p.acquire?`${custodyAcquireLabel(p)} · ${lead}d`:`Order · ${cost>0?fmtUsd(cost):"free"}${lead?` · ${lead}d`:""}`}</button>
         ${kind!=="signer"?`<span class="meta">${stock} in stock</span>`:""}</div></article>`;
     }).join("")}</div>`;
   };

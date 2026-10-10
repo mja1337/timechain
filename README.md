@@ -27,7 +27,7 @@ It also opens with an IRC message from a friend who has read the mailing list an
 - **Ask "what if".** What if I had bought a handful of early ASICs and mined through college? What if I had started in 2013, or kept every coin? Pick the date and the hardware and see where it ends up, with the same price history you remember.
 - **Learn what running a mine involves.** Power, internet, hardware servicing, parts and repairs, cooling, upgrades, scaling up and hiring staff are all things that you decide and pay for, with the reasoning shown in the Method tab rather than hidden.
 - **Learn custody without losing anything real.** Find out what cold storage, backups, multisig and a lender's questions mean by watching what they would have done for you.
-- **Teach it.** The tour, the Learn tab and Method (which separates recorded numbers from derived and modelled ones) are written for people who have heard of Bitcoin and never looked inside it.
+- **Teach it.** The hands-on tutorial, the Learn tab and Method (which separates recorded numbers from derived and modelled ones) are written for people who have heard of Bitcoin and never looked inside it.
 
 It is free, runs in a browser (phones included), needs no account and sends nothing anywhere. Your game is saved only in your browser.
 
