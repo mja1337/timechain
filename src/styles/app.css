@@ -493,7 +493,7 @@ body.tour-on:not(.tour-clock-on) .speed:not([data-value="0"]),body.tour-on:not(.
 /* The tutorial's checklist: a dot per step, the one thing to do now, and whether the clock may run. */
 .tour-dots{display:flex;gap:4px;list-style:none;margin:0 0 10px;padding:0}.tour-dots li{flex:1;height:4px;background:var(--line)}.tour-dots li.done{background:var(--green)}.tour-dots li.current{background:var(--orange)}
 .tour-last{font:600 10px var(--mono);color:var(--green);margin:-2px 0 6px}
-.tour-do{margin:0 0 10px;padding:9px 11px;border-left:3px solid var(--orange);background:#1a1408;font-size:13px;line-height:1.5;color:var(--text)}.tour-do.done{border-left-color:var(--green);background:#0f1a13}
+.tour-do{margin:0 0 10px;padding:9px 11px;border-left:3px solid var(--orange);background:#1a1408;font-size:13px;line-height:1.5;color:var(--text)}.tour-do.done{border-left-color:var(--green);background:#0f1a13}.tour-do.stuck{border-left-color:var(--orange2);background:#141a1b;color:var(--muted)}.tour-do.stuck b{color:var(--orange2)}
 .tour-clock{font:600 10px var(--mono);letter-spacing:.04em;color:var(--muted);margin:0 0 12px}.tour-clock.run{color:var(--orange2)}
 @media(max-width:800px){.tour-card{left:8px;right:8px;bottom:8px;width:auto;max-height:46vh;padding:12px 14px 10px}.tour-bar{margin:-12px -14px 10px}.tour-card p{font-size:12.5px;margin-bottom:10px}.tour-card.tour-center{left:50%;right:auto;width:calc(100vw - 24px);max-height:80vh}}
 @media(prefers-reduced-motion:reduce){.tour-target{animation:none}}

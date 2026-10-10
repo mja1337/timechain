@@ -492,6 +492,64 @@ assert(inline.includes('typeof hotWalletCard==="function"?hotWalletCard():""') &
   assert(!ev("tourActive()") && ev("state.tour.done") === true && ev("state.speed") === 1, "Pressing play on the last step does not finish the tutorial and leave the clock running");
   const end = JSON.parse(ev(`JSON.stringify({hot:hotKeyBackedUp(),ready:custodySetup().ready,away:tourBackupsAtMine().length===0&&custodyAssignedKeys().length===1,prepared:tourSigners().every(d=>workshopPrepared(d)),dest:poolAccount().destination})`));
   assert(end.hot && end.ready && end.away && end.prepared && end.dest === "cold", `The tutorial finished without a fully set up wallet: ${JSON.stringify(end)}`);
+
+  // Robustness: the tutorial is never a dead end, whatever else the player does while it is up.
+  const freshRun = (cash = 2500) => ev(`state=initialState();state.started=true;state.cash=${cash};state.campaignStart=state.time;state.lastMonth=new Date(state.time).toISOString().slice(0,7);
+      state.walletSetup={done:false,step:0,rolls:[],keyHex:"",required:true,resumeSpeed:1};
+      skipWalletSetup();recordWalletPaper();destroyWalletPaper();takeWalletOath();tourAction("tour-next");`);
+  const tourStuckFree = () => ev("tourStuck()") === "" && ev("tourBackupsAtMine().length") > 0;
+  const deliver = `state.speed=1;for(let i=0;i<40&&state.custody.orders.length;i++)tick(true);tourCheck();`;
+  const toOffsite = `backupCustodyKey(hotKey().id,"paperbackup");tourCheck();orderCustodyProduct(tourCheapestSigner().id);tourCheck();${deliver}
+      inspectWorkshopDevice(tourSigners()[0].uid);prepareWorkshopDevice(tourSigners()[0].uid);tourCheck();
+      generateCustodyKey(tourSigners()[0].uid);backupCustodyKey(tourSigners()[0].keyId,"paperbackup");tourCheck();
+      assignCustodyKey(tourSigners()[0].keyId);tourCheck();`;
+  // 1. A second signer ordered (and delivered, and given a written-down key of its own) half-way through step 8.
+  freshRun(); ev(toOffsite);
+  assert(step() === "offsite", "The robustness run did not reach the off-site step");
+  ev(`moveCustodyItem("backup",hotKey().id,"bank");tourCheck();orderCustodyProduct(tourCheapestSigner().id);tourCheck();`);
+  assert(step() === "offsite" && ev("tourClockAllowed()") === false, "Ordering a second signer during step 8 moves the tutorial or lets the clock run");
+  ev(`${deliver}{const d=tourSigners().find(x=>!x.keyId);inspectWorkshopDevice(d.uid);prepareWorkshopDevice(d.uid);generateCustodyKey(d.uid);backupCustodyKey(d.keyId,"paperbackup");}tourCheck();`);
+  assert(step() === "offsite" && ev("tourSigners().length") === 2 && ev("tourColdKeys().length") === 2, "A second signer and key mid step 8 did not leave the tutorial waiting on its own backups");
+  assert(ev(`tourMoveRow===undefined||tourBackupsAtMine().length===1`) && ev(`tourBackupsAtMine()[0].id===state.tour.reserveKeys[0]`), "Step 8 asks for the extra key's backup instead of the tutorial's own reserve key");
+  // The player also unassigns the tutorial's key and assigns the new one: the step follows what is in charge now.
+  ev(`unassignCustodyKey(state.tour.reserveKeys[0]);assignCustodyKey(tourColdKeys().find(k=>k.id!==state.tour.reserveKeys[0]).id);tourCheck();`);
+  assert(step() === "offsite" && tourStuckFree(), "Swapping the reserve key during step 8 leaves it with nothing to point at");
+  ev(`for(const k of tourBackupsAtMine())moveCustodyItem("backup",k.id,"trusted");tourCheck();`);
+  assert(step() === "payout", "Step 8 stalls once a second signer has been ordered: its backups left the mine and it did not move on");
+  // A later change to the wallet's rule cannot pull the finished step back into a stall.
+  ev(`tourAction("tour-back");`);
+  assert(step() === "offsite" && ev("state.tour.arrivedDone") === true, "Back from step 9 does not land on a done step 8");
+  ev(`tourCheck();`);
+  assert(step() === "offsite", "A done step reached with Back moves on by itself instead of waiting for Next");
+  ev(`tourAction("tour-next");`);
+  assert(step() === "payout", "Next on a done step reached with Back does not return to where the player was");
+  // 2. Back and forward across several steps: Next skips what is already done and lands on the first step still to do.
+  ev(`tourAction("tour-back");tourAction("tour-back");tourAction("tour-back");`);
+  assert(step() === "reservekey", "Back does not walk one step at a time");
+  ev(`tourAction("tour-next");`);
+  assert(step() === "payout", "Next from an earlier done step does not skip to the first step still to do");
+  ev(`setPayoutDestination("cold");tourCheck();state.speed=1;tourCheck();`);
+  assert(!ev("tourActive()") && ev("state.tour.done") === true, "The second-signer run does not finish the tutorial");
+  // 3. Out of order: everything done before the tutorial asks for it, then one check lands on the last step.
+  freshRun();
+  ev(`orderCustodyProduct(tourCheapestSigner().id);tourCheck();`);
+  assert(step() === "hotbackup" && ev("tourClockAllowed()") === false, "Ordering the signer early lets the clock run on the backup step");
+  ev(`backupCustodyKey(hotKey().id,"paperbackup");tourCheck();`);
+  assert(step() === "signer" && ev("tourClockAllowed()") === true, "A signer ordered early is not recognised on the signer step");
+  ev(`state.speed=1;for(let i=0;i<40&&state.custody.orders.length;i++)tick(true);
+      {const d=tourSigners()[0];inspectWorkshopDevice(d.uid);prepareWorkshopDevice(d.uid);generateCustodyKey(d.uid);backupCustodyKey(d.keyId,"paperbackup");assignCustodyKey(d.keyId);
+      moveCustodyItem("backup",hotKey().id,"bank");moveCustodyItem("backup",d.keyId,"bank");}setPayoutDestination("cold");tourCheck();`);
+  assert(step() === "start", `Steps done out of order are not passed over: the tutorial is on "${step()}"`);
+  // 4. No cash for a signer: the step says so and offers Next, and the steps that need a signer do the same.
+  freshRun(20);
+  ev(`backupCustodyKey(hotKey().id,"paperbackup");tourCheck();`);
+  assert(step() === "signer" && /short of a signer/.test(ev("tourStuck()")), "A player who cannot afford a signer is not told so with a way on");
+  ev(`tourAction("tour-next");`);
+  assert(step() === "prepare" && ev("tourStuck()").length > 0, "Next on a stuck signer step does not move on, or the next step pretends a signer exists");
+  for (const id of ["reservekey", "assign", "offsite"]) { ev(`tourAction("tour-next");`); assert(step() === id && ev("tourStuck()").length > 0, `Without a signer, step "${id}" is a dead end`); }
+  ev(`tourAction("tour-next");`);
+  assert(step() === "payout", "Next past the cold-storage steps does not reach the payout step");
+  assert(inline.includes('data-action="tour-next">Next</button>') && /\|\|tourStuck\(s\)\)tourForward\(\)/.test(inline), "A stuck tutorial step offers no Next");
 }
 for (const act of ["settle-btc","settle-liquidate","settle-bridge","settle-defer","settle-receivership"]) {
   assert(inline.includes(`action:"${act}"`) && inline.includes(`a==="${act}"`),

@@ -7,7 +7,9 @@
    on one disk, no backup and no cold storage, which is exactly how the early custody losses happened. This one
    is a coach with a checklist. Each card asks for one action, points at the button that does it, and moves on
    by itself when the game's own state says it has been done: the key written down, the signer delivered, the
-   reserve key assigned. A Next button only appears on a step that was already done when you reached it.
+   reserve key assigned. A Next button only appears on a step that was already done when you reached it, or on one
+   that cannot be done from here: no cash for a signer, no signer for the steps that need one, a wallet rule the
+   player changed, or a button that has not been on screen for a few seconds. The card says why. It is never a dead end.
 
    By the last card the wallet is set up end to end: the online wallet's key is backed up, a signer is
    delivered, checked and holding a reserve key, that key is written down and assigned to the reserve wallet,
@@ -34,16 +36,31 @@ function tourCheapestSigner(){return CUSTODY_PRODUCTS.filter(p=>p.kind==="signer
 function tourBacked(k){return !!k&&!!k.backup&&!k.backup.destroyed}
 /* A backup counts as away from the mine once it has left, even while it is still travelling. */
 function tourAway(k,s=state){return tourBacked(k)&&!!k.backup.place&&(k.backup.place==="transit"||custodyPlaceId(k.backup.place,s)!=="site")}
-/* The paper copies that still share the mine's fate: the online wallet's and every assigned reserve key's. */
+/* The reserve key(s) this run of the tutorial put in charge, recorded when the "assign" step is done (or first
+   reached). Signers and keys the player adds along the way are never part of a step's test: a second signer
+   ordered half-way through must not change what "done" means. Falls back to whatever is assigned. */
+function tourReserveKeys(s=state){
+  const assigned=custodyAssignedKeys(s),ids=(s.tour&&s.tour.reserveKeys)||[];
+  const mine=ids.map(id=>assigned.find(k=>k.id===id)).filter(Boolean);
+  return mine.length?mine:assigned;
+}
+function tourRecordReserveKeys(s=state){const t=s.tour;if(t&&!(t.reserveKeys||[]).some(id=>custodyAssignedKeys(s).some(k=>k.id===id)))t.reserveKeys=custodyAssignedKeys(s).map(k=>k.id)}
+/* The paper copies that still share the mine's fate: the online wallet's and the tutorial's reserve key's. */
 function tourBackupsAtMine(s=state){
   const hot=typeof hotKey==="function"?hotKey(s):null;
-  return [hot,...custodyAssignedKeys(s)].filter(k=>tourBacked(k)&&!tourAway(k,s));
+  return [hot,...tourReserveKeys(s)].filter(k=>tourBacked(k)&&!tourAway(k,s));
 }
+function tourHasSignerOrKey(s=state){return tourSigners(s).length>0||tourColdKeys(s).length>0}
+const TOUR_NEED_SIGNER="This step needs a signer, and there is none yet. Press <b>Back</b> to get one, or <b>Next</b> to carry on and finish it later from <b>Replay tutorial</b>.";
 function tourSpeedButton(){return tourVisible('.topbar .speed[data-value="1"]')||tourVisible(".mobile-pause-button")||tourVisible('.speed[data-value="1"]')}
+/* Re-resolved on every refresh: the first backup still at the mine whose move button is on screen, so a row that
+   moves, re-renders or is replaced never leaves the ring pointing at nothing. */
 function tourMoveRow(){
-  const k=tourBackupsAtMine()[0];if(!k)return null;
-  const b=tourVisible(`[data-action="custody-move"][data-kind="backup"][data-id="${k.id}"]`);
-  return b?b.closest(".incoming-fleet-row")||b:null;
+  for(const k of tourBackupsAtMine()){
+    const b=tourVisible(`[data-action="custody-move"][data-kind="backup"][data-id="${k.id}"]`);
+    if(b)return b.closest(".incoming-fleet-row")||b;
+  }
+  return null;
 }
 
 const TOUR_STEPS=[
@@ -67,26 +84,38 @@ const TOUR_STEPS=[
         :`Press <b>Order ${p.name}</b> on step 1 of the <b>Set up cold storage</b> card (${cost>0?fmtUsd(cost):"free"}, ${custodyLeadDays(p)} day${custodyLeadDays(p)===1?"":"s"}).`;
     },
     clock:s=>tourSignerOrdered(s),pauseWhenDone:true,
+    stuck:()=>{if(tourSignerOrdered())return "";const p=tourCheapestSigner();
+      if(!p)return "No signer is on sale at this date. Press <b>Next</b> to carry on; cold storage can wait.";
+      return state.cash<custodyUnitCost(p)?`You are ${fmtUsd(custodyUnitCost(p)-state.cash)} short of a signer. Press <b>Next</b> to carry on without one for now.`:""},
     done:s=>tourSigners(s).length>0||tourColdKeys(s).length>0},
   {id:"prepare",chapter:"Cold storage",tab:"custody",target:['.custody-workshop [data-action="workshop-inspect"]','.custody-workshop [data-action="workshop-prepare"]','.cold-setup li.current [data-action="workshop-focus"]',".custody-workshop"],title:"Check it and prepare its software",
     body:"A parcel is not proof. Check where it came from, then record the software that will show you each payment before you sign it. Neither step makes a key.",
     hint:()=>tourVisible('.custody-workshop [data-action="workshop-prepare"]')?"Press <b>Record software and payment-review checks</b> in the workshop."
       :tourVisible('.custody-workshop [data-action="workshop-inspect"]')?"Press <b>Inspect delivery and source</b> in the workshop."
       :"Press <b>Open this signer in the workshop</b> on the <b>Set up cold storage</b> card.",
+    stuck:s=>tourHasSignerOrKey(s)?"":tourSignerOrdered(s)?"Your signer is still on its way. Press <b>Back</b> and let the clock run until it arrives, or <b>Next</b> to carry on.":TOUR_NEED_SIGNER,
     done:s=>tourSigners(s).some(d=>workshopPrepared(d))||tourColdKeys(s).length>0},
   {id:"reservekey",chapter:"Cold storage",tab:"custody",target:['.cold-setup li.current [data-action="custody-genkey"]','.cold-setup li.current [data-action="custody-backup"]','.custody-workshop [data-action="custody-genkey"]','.custody-workshop [data-action="custody-backup"]',".cold-setup"],title:"Make a reserve key and write it down",
     body:"Create the secret on the signer, then copy it onto paper. The device can fail; the paper copy is how the key comes back. Anyone who reads it can spend with it, so it is kept private.",
     hint:()=>tourColdKeys().length?"Press <b>Write it on paper · free</b>.":"Press <b>Generate a key</b>.",
-    done:s=>{const k=tourColdKeys(s);return k.length>0&&k.every(tourBacked)}},
+    stuck:s=>tourHasSignerOrKey(s)?"":TOUR_NEED_SIGNER,
+    // One reserve key written down is the goal; extra keys made on extra signers are the player's own business.
+    done:s=>tourColdKeys(s).some(tourBacked)||custodyAssignedKeys(s).some(tourBacked)},
   {id:"assign",chapter:"Cold storage",tab:"custody",target:['.cold-setup li.current [data-action="custody-assign"]','.custody-workshop [data-action="custody-assign"]',".cold-setup"],title:"Put the key in charge of the reserve",
     body:"A key protects nothing until the reserve wallet's spending rule names it. One key, one signature: simple to use, and the right place to start.",
     hint:()=>"Press <b>Assign to wallet</b>.",
+    stuck:s=>{if(!tourHasSignerOrKey(s))return TOUR_NEED_SIGNER;const set=custodySetup(s);
+      if(!set.ready&&set.assigned.length&&set.policy.keys>1)return `Your reserve wallet now asks for ${set.policy.keys} keys. Assign another key, switch back to a single key, or press <b>Next</b> to carry on.`;
+      if(!tourColdKeys(s).some(tourBacked))return "There is no written-down reserve key to assign. Press <b>Back</b> to write one down, or <b>Next</b> to carry on.";
+      return ""},
     done:s=>custodySetup(s).ready},
   {id:"offsite",chapter:"Keep it safe",tab:"custody",target:[tourMoveRow,".cold-setup"],title:"Keep the backups away from the mine",
     body:"Both paper copies are in the same building as the computer and the signer, so one fire takes the lot. Send each to a <b>bank deposit box</b> (safest, $15 a month) or <b>a trusted person's house</b> (free, with a very small chance they help themselves).",
     hint:()=>{const n=tourBackupsAtMine().length;return `In <b>Where things are kept</b>, press <b>→ Bank deposit box</b> or <b>→ A trusted person's house</b> beside the seed backup. ${n} still at the mine.`},
-    // Only once there is something to protect: the online wallet written down and a reserve wallet ready.
-    done:s=>(typeof hotKey!=="function"||!hotKey(s)||hotKeyBackedUp(s))&&custodySetup(s).ready&&tourBackupsAtMine(s).length===0},
+    stuck:s=>tourReserveKeys(s).length?"":"No reserve key is in charge of the reserve yet, so there is nothing of its to move. Press <b>Back</b> to assign one, or <b>Next</b> to carry on.",
+    /* Judged on the tutorial's own keys only: the online wallet's backup and the reserve key(s) it assigned. Extra
+       signers, extra keys and a later change to the wallet's rule cannot hold this step up. */
+    done:s=>(typeof hotKey!=="function"||!hotKey(s)||hotKeyBackedUp(s))&&tourReserveKeys(s).length>0&&tourBackupsAtMine(s).length===0},
   {id:"payout",chapter:"Mining",tab:"pools",target:['[data-action="payout-destination"][data-value="cold"]',".payout-destinations"],title:"Choose where mining income lands",
     body:"Every coin you mine is paid to an address you choose. <b>Cold storage</b> is the safest place and takes days to spend from; the <b>online wallet</b> can pay a bill this afternoon and is reachable by anyone who reaches the computer.",
     hint:()=>`${state.time<MARKET?"Before July 2010 there is no market, so mined coins cannot pay a bill yet and cold storage costs you nothing. ":""}Press <b>Send income here</b> under Cold storage, or keep it online with the button below.`,
@@ -97,7 +126,16 @@ const TOUR_STEPS=[
     clock:()=>true,done:s=>s.speed>0}
 ];
 
-let tourScrolledByPlayer=false,tourCardSignature="",tourSettleUntil=0;
+let tourScrolledByPlayer=false,tourCardSignature="",tourSettleUntil=0,tourMissingSince=0;
+/* Never a dead end. A step that cannot be done from here (no cash, no signer, a rule the player changed) says why
+   and offers Next; so does a step whose button has not been on screen for a few seconds. */
+const TOUR_MISSING_MS=4000;
+function tourStuck(step=tourStep(),s=state){
+  if(step.center||tourDone(step,s))return "";
+  const why=step.stuck?step.stuck(s):"";if(why)return why;
+  if(tourMissingSince&&Date.now()-tourMissingSince>TOUR_MISSING_MS)return "Can't see the button for this step? It may have moved: scroll the page, or press <b>Next</b> to carry on.";
+  return "";
+}
 function normalizeTourState(s){
   // A save from before the tour is treated as having done it.
   if(!s.tour||typeof s.tour!=="object")s.tour={active:false,done:true,step:0,resumeSpeed:0};
@@ -121,7 +159,7 @@ function tourClockAllowed(){return tourActive()&&!!tourStep().clock&&!!tourStep(
 /* Begin, or begin again. The clock's speed is kept and restored if the tutorial is skipped. */
 function beginTour(){
   const t=tourState();
-  t.active=true;t.done=false;t.payoutKept=false;t.lastDone="";t.resumeSpeed=state.speed>0?state.speed:(t.resumeSpeed||0);
+  t.active=true;t.done=false;t.payoutKept=false;t.lastDone="";t.reserveKeys=[];t.resumeSpeed=state.speed>0?state.speed:(t.resumeSpeed||0);
   state.speed=0;setTimer();
   tourGo(0);
 }
@@ -138,7 +176,8 @@ function tourNextIndex(from){
 }
 function tourGo(index,openIt=true){
   const t=tourState(),s=TOUR_STEPS[Math.max(0,Math.min(TOUR_STEPS.length-1,index))];
-  t.step=TOUR_STEPS.indexOf(s);t.id=s.id;t.arrivedDone=tourDone(s);
+  if(s.id==="offsite")tourRecordReserveKeys();
+  t.step=TOUR_STEPS.indexOf(s);t.id=s.id;t.arrivedDone=tourDone(s);tourMissingSince=0;
   if(s.tab&&openIt){activeTab=openTab(s.tab);mobileMenuOpen=false}
   tourCardSignature="";save();render(false);
 }
@@ -159,7 +198,7 @@ function tourAction(a){
   }
   if(!tourActive())return;
   const s=tourStep();
-  if(a==="tour-next"){if(s.center||t.arrivedDone||tourDone(s))tourForward()}
+  if(a==="tour-next"){if(s.center||t.arrivedDone||tourDone(s)||tourStuck(s))tourForward()}
   else if(a==="tour-back"){if(t.step>0)tourGo(t.step-1)}
   else if(a==="tour-goto"){if(s.tab){activeTab=openTab(s.tab);mobileMenuOpen=false;tourCardSignature="";render(false)}}
   else if(a==="tour-keep-hot"){if(s.keep){t.payoutKept=true;tourCheck()}}
@@ -177,6 +216,7 @@ function tourCheck(){
   if(done&&!t.arrivedDone&&!s.center){
     if(s.pauseWhenDone&&state.speed>0){state.speed=0;setTimer()}
     t.lastDone=s.title;
+    if(s.id==="assign")tourRecordReserveKeys();
     if(s.finish){endTour();return}
     tourForward();return;
   }
@@ -211,10 +251,11 @@ function tourCardHtml(){
   const pct=Math.round(TOUR_STEPS.filter(x=>x.center||tourDone(x)).length/total*100);
   const dots=TOUR_STEPS.map((x,i)=>`<li class="${i===n?"current":x.center||tourDone(x)?"done":""}" title="${i+1}. ${x.title}"></li>`).join("");
   const goto=!s.center&&!tourOnTab(s)?`<button class="action small primary" data-action="tour-goto">Go to ${tourTabName(s)}</button>`:"";
-  const doing=s.center?"":done?`<div class="tour-do done"><b>✓ Done.</b> ${s.finish?"":"Press Next to carry on."}</div>`:`<div class="tour-do"><b>Do this:</b> ${s.hint()}</div>`;
+  const stuck=s.center||done?"":tourStuck(s);
+  const doing=s.center?"":done?`<div class="tour-do done"><b>✓ Done.</b> ${s.finish?"":"Press Next to carry on."}</div>`:`<div class="tour-do"><b>Do this:</b> ${s.hint()}</div>${stuck?`<div class="tour-do stuck"><b>Stuck?</b> ${stuck}</div>`:""}`;
   const clock=!s.center&&!done?(tourClockAllowed()?`<div class="tour-clock run">The clock may run for this step.</div>`:`<div class="tour-clock">The clock is held while you do this.</div>`):"";
   const actions=first?`<button class="action primary" data-action="tour-next">Start</button><button class="action-link" data-action="tour-skip">Skip tutorial</button>`
-    :`${goto}${done&&!s.finish?`<button class="action small primary" data-action="tour-next">Next</button>`:""}${s.keep&&!done?`<button class="action small" data-action="tour-keep-hot">Keep it in the online wallet</button>`:""}<button class="action small" data-action="tour-back">Back</button><button class="action-link" data-action="tour-skip">Skip tutorial</button>`;
+    :`${goto}${(done&&!s.finish)||stuck?`<button class="action small primary" data-action="tour-next">Next</button>`:""}${s.keep&&!done?`<button class="action small" data-action="tour-keep-hot">Keep it in the online wallet</button>`:""}<button class="action small" data-action="tour-back">Back</button><button class="action-link" data-action="tour-skip">Skip tutorial</button>`;
   return `${s.center?`<div class="tour-dim"></div>`:""}<aside class="tour-card${s.center?" tour-center":""}" role="dialog" aria-live="polite" aria-label="Tutorial" data-step="${s.id}">
     <div class="tour-bar"><i style="width:${pct}%"></i></div>
     <div class="tour-kicker">Step ${n+1} of ${total} · ${s.chapter}</div><ol class="tour-dots" aria-hidden="true">${dots}</ol>
@@ -223,7 +264,7 @@ function tourCardHtml(){
 }
 function tourSignature(){
   const s=tourStep();
-  return [s.id,tourDone(s),tourOnTab(s),tourClockAllowed(),s.hint?s.hint():"",tourState().lastDone].join("|");
+  return [s.id,tourDone(s),tourOnTab(s),tourClockAllowed(),s.hint?s.hint():"",tourStuck(s),tourState().lastDone].join("|");
 }
 /* Redraw the card only when what it says has changed, and keep the ring on its target through partial repaints. */
 function tourRefreshCard(force=false){
@@ -239,6 +280,8 @@ function tourRefreshCard(force=false){
   // A decision that opens while the tutorial is up (a bill, a loss, an event) takes the screen; the card comes back when it closes.
   document.body.classList.toggle("tour-modal",!!app.querySelector(".modal-backdrop"));
   const s=tourStep(),el=s.center||!tourOnTab(s)?null:tourFindTarget(s),had=document.querySelector(".tour-target");
+  // How long the step's button has been missing from its own page (a modal on top does not count).
+  if(el||s.center||!tourOnTab(s)||tourDone(s)||app.querySelector(".modal-backdrop"))tourMissingSince=0;else if(!tourMissingSince)tourMissingSince=Date.now();
   if(had&&had!==el)had.classList.remove("tour-target");
   if(sig!==tourCardSignature){tourScrolledByPlayer=false;tourCardSignature=sig;tourSettleUntil=Date.now()+4000}
   if(el){
