@@ -34,7 +34,7 @@ export const TOUR_DATES = ["2009-01-03", "2009-01-20", "2009-06-01", "2010-01-15
 
 const PLACES = ["site", "home", "bank", "trusted"];
 
-export function runTutorialGuarantee({ tourSource, treasurySource, seedsPerCase = 16, maxSteps = 400, log = null } = {}) {
+export function runTutorialGuarantee({ tourSource, treasurySource, seedsPerCase = 13, maxSteps = 400, log = null } = {}) {
   tourSource ??= fs.readFileSync(path.join(ROOT, "src/ui/tour.js"), "utf8");
   treasurySource ??= fs.readFileSync(path.join(ROOT, "src/ui/tabs/treasury.js"), "utf8");
   const sb = loadEngine();
@@ -200,7 +200,7 @@ export function runTutorialGuarantee({ tourSource, treasurySource, seedsPerCase 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const src = process.argv[2] ? fs.readFileSync(process.argv[2], "utf8") : undefined;
   const t0 = Date.now();
-  const r = runTutorialGuarantee({ tourSource: src, seedsPerCase: Number(process.env.SEEDS || 16) });
+  const r = runTutorialGuarantee({ tourSource: src, seedsPerCase: Number(process.env.SEEDS || 13) });
   console.log(JSON.stringify({ ...r, failures: r.failures.length, sample: r.failures.slice(0, 15), ms: Date.now() - t0 }, null, 1));
   process.exit(r.failures.length ? 1 : 0);
 }

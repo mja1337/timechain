@@ -64,6 +64,12 @@ jobs:
         run: node scripts/check-ui-contracts.mjs
       - name: Engine behaviour
         run: node scripts/check-engine-behaviour.mjs
+      # Opens every tab, section and drawer in headless Chrome (preinstalled on the runner) at
+      # desktop and phone sizes; fails on any console error or uncaught exception.
+      - name: Every tab in a real browser
+        run: |
+          npm install --no-save --no-package-lock --no-audit --no-fund playwright@1.64.0
+          node scripts/check-every-tab.mjs
 
   data-guardrails:
     name: Data refresh guardrails

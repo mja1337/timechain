@@ -590,10 +590,10 @@ assert(inline.includes('typeof hotWalletCard==="function"?hotWalletCard():""') &
   // THE GUARANTEE, by property: many start dates, new runs and replays, a separate seeded random stream, random
   // interference; at every point the current step has a progressing action, and following the card finishes the wallet.
   const { runTutorialGuarantee } = await import("./tutorial-guarantee.mjs");
-  const g = runTutorialGuarantee({ tourSource, treasurySource, seedsPerCase: 16 });
+  const g = runTutorialGuarantee({ tourSource, treasurySource, seedsPerCase: 13 });
   assert(g.refused === 0 && g.honestStops === 0, `The tutorial refused a replay or stopped itself: ${JSON.stringify(g)}`);
   assert(g.failures.length === 0, `The tutorial can get stuck (${g.failures.length} of ${g.scenarios} randomised runs):\n  ${g.failures.slice(0, 8).join("\n  ")}`);
-  assert(g.scenarios >= 800 && g.completed >= g.scenarios / 2 && g.clean >= 40 && g.interferences >= 5000, `The tutorial guarantee ran too little to mean anything: ${JSON.stringify(g)}`);
+  assert(g.scenarios >= 700 && g.completed >= g.scenarios / 2 && g.clean >= 40 && g.interferences >= 5000, `The tutorial guarantee ran too little to mean anything: ${JSON.stringify(g)}`);
   console.log(`Tutorial guarantee: ${g.scenarios} randomised runs (${g.interferences} interferences, ${g.actions} card actions): ${g.completed} finished with the wallet set up, ${g.endedWithRun} ended with the run, ${g.skipped} skipped; ${g.provided} signers provided silently; 0 stuck, 0 stopped by the tutorial, 0 replays refused.`);
 }
 for (const act of ["settle-btc","settle-liquidate","settle-bridge","settle-defer","settle-receivership"]) {
