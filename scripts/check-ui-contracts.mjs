@@ -2282,9 +2282,11 @@ assert(/@media\(max-width:800px\)\{\.topbar-cash\{[^}]*\}\.topbar-cash \.cash-fu
   }
   assert(sawPenalty, "No Energy-tab scenario actually exercised the load penalty above 55% of capacity");
 }
-// PHASE 0. Tutorial layout, simulated paper, a trade amount that survives a repaint, and
-// pre-market bill guidance that does not invent a market or a grace month.
-assert(inline.includes("This is a simulated paper exercise") && inline.includes("Simulate recording and checking") && inline.includes('data-action="wallet-paper-recorded"'), "The paper checkpoint no longer says the exercise is simulated, or it dropped the recording action");
+// PHASE 0 layout only. Yesterday afternoon's tutorial (hands-on cards, the never-stuck
+// rules, the press-and-hold die, and the paper checkpoint) stays. James's shorter step
+// bodies, the folded "Why this step matters" card, and his rewritten paper checkpoint do not.
+assert(inline.includes("Write the record, then destroy it.") && inline.includes("I wrote the roll sequence on paper") && inline.includes('data-action="wallet-paper-recorded"') && !inline.includes("This is a simulated paper exercise"), "The paper checkpoint must keep yesterday's ceremony wording and its recording action");
+assert(inline.includes("points at the button that does it, and moves on by itself once it is done") && inline.includes("NEVER STUCK") && inline.includes("Press and hold the die to shake it") && inline.includes("or the other place, if you prefer") && !inline.includes("Why this step matters"), "James's shorter tutorial cards or folded reasons must not replace the afternoon tutorial or the dice ceremony");
 assert(css.includes("max-width:1000px") && css.includes("var(--tour-card-h") && inline.includes('".hud",".drawer-head"') && inline.includes('addEventListener("resize"'), "The tutorial card is full width only below 800px again, or a resize no longer puts the highlighted control back in view");
 assert(inline.includes("One monthly fee covers every copy in the box.") && inline.includes('/month`:" · free"'), "The bank-box tutorial action no longer shows its fee, or no longer says one fee covers the box");
 assert(inline.includes("const tradeAmountDrafts=new WeakMap()") && inline.includes("tradeAmounts()[key]=amount"), "An exact trade amount is not remembered across a ticket repaint");

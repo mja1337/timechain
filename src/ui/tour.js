@@ -190,7 +190,7 @@ function tourMoveAction(){
   const k=tourBackupsAtMine()[0];if(!k)return null;
   const to=state.cash>=custodyPlace("bank").fee*12?"bank":"trusted",name=custodyPlace(to).name;
   const fee=to==="bank"?` · ${fmtUsd(custodyPlace(to).fee)}/month`:" · free";
-  return {label:`Send it to ${to==="bank"?"the bank box":"a trusted house"}${fee}`,hint:`Move <b>${k.hot?"your online wallet's backup":`key ${k.label}'s backup`}</b> out of the mine: press <b>→ ${name}</b> beside it in <b>Where things are kept</b>. ${tourBackupsAtMine().length} still at the mine. ${to==="bank"?"One monthly fee covers every copy in the box.":"The trusted house is free."}`,
+  return {label:`Send it to ${to==="bank"?"the bank box":"a trusted house"}${fee}`,hint:`Move <b>${k.hot?"your online wallet's backup":`key ${k.label}'s backup`}</b> out of the mine: press <b>→ ${name}</b> beside it in <b>Where things are kept</b> (or the other place, if you prefer). ${tourBackupsAtMine().length} still at the mine. ${to==="bank"?"One monthly fee covers every copy in the box.":"The trusted house is free."}`,
     ring:[tourMoveRow,".cold-setup"],run:()=>moveCustodyItem("backup",k.id,to)};
 }
 
