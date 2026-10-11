@@ -9,7 +9,8 @@
 import { mkdirSync } from "node:fs";
 
 const core = process.env.PLAYWRIGHT_CORE || "playwright-core";
-const { chromium } = await import(core);
+const imported = await import(core);
+const { chromium } = imported.chromium ? imported : imported.default;
 const url = process.env.HUD_URL || "http://127.0.0.1:8090/";
 const out = process.env.HUD_SHOTS || "/opt/cursor/artifacts/phase1";
 mkdirSync(out, { recursive: true });
@@ -29,7 +30,7 @@ async function fresh() {
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector("[data-action=begin]");
   await page.click("[data-action=begin]");
-  await page.waitForFunction(() => window.state && state.started);
+  await page.waitForFunction(() => typeof state !== "undefined" && state.started);
   await page.evaluate(() => { state.walletSetup.done = true; render(); });
   await page.waitForSelector(".hud");
 }
@@ -75,7 +76,7 @@ async function measure(name, width, height) {
   assert(stats.count === 16 && stats.empty === 0 && !stats.ticker, `${name} stats pop-out is ${JSON.stringify(stats)}`);
   await page.screenshot({ path: `${out}/${name}-stats.png` });
   await page.keyboard.press("Escape");
-  await page.waitForSelector("#hud-stats-pop[hidden]");
+  await page.waitForFunction(() => document.querySelector("#hud-stats-pop")?.hidden === true);
   const focus = await page.evaluate(() => document.activeElement?.dataset?.action || "");
   assert(focus === "hud-stats", `${name} Escape returned focus to ${focus || "nothing"}`);
 
