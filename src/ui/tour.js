@@ -149,7 +149,7 @@ function tourWorkshopAction(d){
   const name=custodyProduct(d.product)?.name||"the signer";
   if(!d.inspected)return {label:"Inspect delivery and source",hint:`Check where <b>${name}</b> came from: press <b>Inspect delivery and source</b>.`,
     ring:['.custody-workshop [data-action="workshop-inspect"]','.cold-setup li.current [data-action="workshop-focus"]',".custody-workshop"],run:()=>inspectWorkshopDevice(d.uid)};
-  if(d.chainSource==="own"&&typeof nodeOnline==="function"&&!nodeOnline())return {label:"Use the provider's chain data",hint:`${name} is set to check payments against your own node, which is offline. Switch it to the provider's chain data (you can change it back once the node is up).`,
+  if(d.chainSource==="own"&&typeof nodeOnline==="function"&&!nodeOnline())return {label:"Use the provider's chain data",hint:`${name} checks payments against your node, which is offline. Switch it to the provider's chain data. You can change it back once the node is up.`,
     ring:[".custody-workshop"],run:()=>setWorkshopClient(d.uid,"chainSource","provider")};
   return {label:"Record software and checks",hint:`Record the software that will show you each payment: press <b>Record software and payment-review checks</b>.`,
     ring:['.custody-workshop [data-action="workshop-prepare"]','.cold-setup li.current [data-action="workshop-focus"]',".custody-workshop"],run:()=>prepareWorkshopDevice(d.uid)};
@@ -206,17 +206,17 @@ function tourMoveRow(){
 
 const TOUR_STEPS=[
   {id:"welcome",center:true,chapter:"Tutorial",title:"Finish setting up, one step at a time",
-    body:"Your wallet has a key. In the next few minutes you will back it up, build a cold-storage reserve beside it, choose where your income lands and start mining. Each card asks for <b>one thing</b>, points at the button that does it, and moves on by itself once it is done. <b>The clock is held</b> until the last step, apart from the days a delivery takes."},
+    body:"Your wallet has a key. Back it up, build a cold-storage reserve, choose where income lands, then start mining. Each card asks for <b>one thing</b>, points at the button that does it, and moves on once that is done. <b>The clock is held</b> until the last step, apart from the days a delivery takes."},
   {id:"walletkey",chapter:"Your wallet",tab:"custody",target:[".hot-wallet"],title:"Make your wallet's key",
-    body:"A block reward is paid to an address, and an address comes from a key. You made that key in the opening ceremony: it is the key behind your <b>online wallet</b>.",
+    body:"A block reward is paid to an address, which comes from a key. You made that key in the opening ceremony: it is the key behind your <b>online wallet</b>.",
     act:()=>null,done:s=>!!s.walletSetup&&!!s.walletSetup.done},
   {id:"hotbackup",chapter:"Your wallet",tab:"custody",target:[`.hot-wallet ${TOUR_PAPER}`,".hot-wallet"],title:"Write the key down",
-    body:"The ceremony sheet is destroyed, so that key now lives on one computer: the one in the mine. If its disk dies, the coins in it go with it. A copy on paper is free, and turns a dead disk into an afternoon's work.",
+    body:"The ceremony sheet is gone, so that key now lives on one computer: the one in the mine. If its disk dies, the coins go with it. A paper copy is free, and is how a dead disk becomes an afternoon's work.",
     again:"Your online wallet's paper backup is gone, so it needs writing down again.",
     act:()=>{const k=hotKey();return k&&!hotKeyBackedUp()?tourBackupAction(k):null},
     done:s=>typeof hotKey!=="function"||!hotKey(s)||hotKeyBackedUp(s)},
   {id:"signer",chapter:"Cold storage",tab:"custody",target:['.cold-setup li.current [data-action="custody-buy"]',".cold-setup"],title:"Get a signer",
-    body:"Cold storage is a key that never touches the mining computer, so it needs a device of its own. Before hardware wallets that means a cheap computer that never goes online.",
+    body:"Cold storage is a key that never touches the mining computer, so it needs a device of its own. Before hardware wallets, that is a cheap computer that never goes online.",
     again:"There is no signer any more (or none that can be back in time), so the reserve needs one again.",
     act:()=>{
       const o=tourSignerOrders()[0];
@@ -231,7 +231,7 @@ const TOUR_STEPS=[
     again:"No signer is checked and prepared any more.",
     act:tourPrepareAction,done:s=>tourSigners(s).some(d=>workshopPrepared(d))||tourColdKeys(s).length>0},
   {id:"reservekey",chapter:"Cold storage",tab:"custody",target:[".cold-setup"],title:"Make a reserve key and write it down",
-    body:"Create the secret on the signer, then copy it onto paper. The device can fail; the paper copy is how the key comes back. Anyone who reads it can spend with it, so it is kept private.",
+    body:"Create the secret on the signer, then copy it onto paper. The device can fail; the paper is how the key comes back. Anyone who reads that paper can spend with it, so keep it private.",
     again:"No reserve key is written down any more.",
     // One reserve key written down is the goal; extra keys made on extra signers are the player's own business.
     act:tourKeyAction,done:s=>tourColdKeys(s).some(tourBacked)},
@@ -240,11 +240,11 @@ const TOUR_STEPS=[
     again:"The reserve wallet is no longer ready: a key in charge of it changed, or its rule did.",
     act:tourAssignAction,done:s=>custodySetup(s).ready&&custodyAssignedKeys(s).every(tourBacked)},
   {id:"offsite",chapter:"Keep it safe",tab:"custody",target:[tourMoveRow,".cold-setup"],title:"Keep the backups away from the mine",
-    body:"The paper copies are in the same building as the computer and the signer, so one fire takes the lot. Send each to a <b>bank deposit box</b> (safest, $15 a month) or <b>a trusted person's house</b> (free, with a very small chance they help themselves).",
+    body:"The paper copies are in the same building as the computer and the signer, so one fire takes the lot. Send each to a <b>bank deposit box</b> (safest; the button shows the monthly fee, and one fee covers every copy) or <b>a trusted person's house</b> (free, with a very small chance they help themselves).",
     again:"A backup is back at the mine.",
     act:tourMoveAction,done:s=>tourBackupsAtMine(s).length===0},
   {id:"payout",chapter:"Mining",tab:"pools",target:['[data-action="payout-destination"][data-value="cold"]',".payout-destinations"],title:"Choose where mining income lands",
-    body:"Every coin you mine is paid to an address you choose. <b>Cold storage</b> is the safest place and takes days to spend from; the <b>online wallet</b> can pay a bill this afternoon and is reachable by anyone who reaches the computer.",
+    body:"Every coin you mine is paid to an address you choose. <b>Cold storage</b> is the safest place and takes days to spend from. The <b>online wallet</b> can pay a bill this afternoon, and anyone who reaches the computer can reach it too.",
     again:"Mining income is no longer going where you chose.",
     keep:true,
     act:()=>payoutDestinationBlockReason("cold")?{label:"Keep it in the online wallet",hint:"Cold storage cannot receive yet, so keep income in the online wallet for now.",ring:[".payout-destinations"],run:()=>{state.tour.payoutKept=true}}
