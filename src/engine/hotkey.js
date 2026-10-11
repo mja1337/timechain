@@ -57,7 +57,14 @@ function createHotWallet(opts={}){
   c.keys.push(key);c.hotKeyId=key.id;
   /* Written on paper at home, which at the start is the same place as the mine: a backup beside the thing it backs up. */
   if(opts.backup)key.backup={product:"paperbackup",durability:"paper",at:state.time,place:"home"};
-  log(`Created the online wallet ${key.label}`,`${tier.name}${key.backup?" · written down":" · no backup yet"}`,"custody");
+  /* The roll sheet is not key.backup. The tutorial's write-it-down step must stay undone. */
+  if(opts.diceSheet)key.diceSheet={product:"dicesheet",durability:"paper",at:state.time,place:"home"};
+  if(opts.passphrase){
+    key.passphrase=true;
+    const place=["home","bank","trusted"].includes(opts.passphrasePlace)?opts.passphrasePlace:"bank";
+    key.passphraseBackup={product:"passphrase",durability:"paper",at:state.time,place};
+  }
+  log(`Created the online wallet ${key.label}`,`${tier.name}${key.backup?" · written down":" · no backup yet"}${key.diceSheet?" · roll sheet kept":""}${key.passphrase?" · passphrase":""}`,"custody");
   return key;
 }
 /* A lost or stolen wallet is replaced by a fresh one, with a fresh key and no backup. The old key stays in the
@@ -78,10 +85,32 @@ const HOT_CAUSES={
   flood:["A flood destroyed the computer holding your online wallet","flooded"],
   burglary:["The computer holding your online wallet was stolen","was stolen"]
 };
+function hotItemRestorable(item){return !!item&&!item.destroyed&&item.place!=="transit"}
+function hotSheetRestorable(key){return hotItemRestorable(key&&key.diceSheet)}
+function hotPassRestorable(key){return hotItemRestorable(key&&key.passphraseBackup)}
+function hotItemDays(item){
+  if(!item||item.destroyed||!item.place)return 0;
+  if(item.place==="transit")return -1;
+  return placeAccess(custodyPlaceId(item.place));
+}
+/* Seed copy, and the passphrase slip when one was set. Absent fields behave as a plain backup. */
+function hotRestorePlan(key){
+  if(key.passphrase&&!hotPassRestorable(key))return null;
+  const seeds=[];
+  if(custodyKeyRestorable(key))seeds.push({via:"backup",days:Math.max(0,custodyRestoreDays(key)),place:key.backup.place});
+  if(hotSheetRestorable(key))seeds.push({via:"sheet",days:Math.max(0,hotItemDays(key.diceSheet)),place:key.diceSheet.place});
+  if(!seeds.length)return null;
+  seeds.sort((a,b)=>a.days-b.days);
+  const seed=seeds[0];
+  if(!key.passphrase)return seed;
+  const pass=key.passphraseBackup,same=custodyPlaceId(seed.place)===custodyPlaceId(pass.place),passDays=Math.max(0,hotItemDays(pass));
+  return {via:seed.via,place:seed.place,days:same?Math.max(seed.days,passDays):seed.days+passDays,pass:true};
+}
 function hotKeyLost(cause,next=state.time,silent=false){
   const key=hotKey();if(!key)return;
   const hot=state.wallets.hot||0,[title,verb]=HOT_CAUSES[cause]||HOT_CAUSES.disk;
-  if(custodyKeyRestorable(key)){
+  /* Written backup, no passphrase: the path every save from before this choice already takes. */
+  if(!key.passphrase&&custodyKeyRestorable(key)){
     const days=Math.max(0,custodyRestoreDays(key)),effort=hot>0?Math.min(state.cash,HOT_RECOVERY_BASE+HOT_RECOVERY_PER_DAY*days):0;
     state.cash-=effort;
     log("Online wallet restored",`${title.replace(/^The |^A /,"")} · restored from the backup${effort>0?` · -${fmtUsd(effort)}`:""}`,"custody");
@@ -89,14 +118,33 @@ function hotKeyLost(cause,next=state.time,silent=false){
       `${title}. The backup rebuilt it for ${fmtUsd(effort)} and ${days} day${days===1?"":"s"} of fetching it. This is what a backup is for.`,"notice","custody");
     return "restored";
   }
+  const plan=key.passphrase||hotSheetRestorable(key)?hotRestorePlan(key):null;
+  if(plan){
+    const days=plan.days,effort=hot>0?Math.min(state.cash,HOT_RECOVERY_BASE+HOT_RECOVERY_PER_DAY*days):0;
+    state.cash-=effort;
+    const from=plan.pass?"the seed copy and the passphrase slip":plan.via==="sheet"?"the roll sheet":"the backup";
+    log("Online wallet restored",`${title.replace(/^The |^A /,"")} · restored from ${from}${effort>0?` · -${fmtUsd(effort)}`:""}`,"custody");
+    if(!silent&&hot>0)showToast("The computer is gone, and the wallet is not",
+      `${title}. Rebuilt from ${from} for ${fmtUsd(effort)} and ${days} day${days===1?"":"s"} of fetching. This is what those copies are for.`,"notice","custody");
+    return "restored";
+  }
   if(hot>0){
     state.wallets.hot=0;utxoState().hot=0;
-    log("Online wallet lost",`-${fmtBtc(hot)} · the computer ${verb} and nothing else held the key`,"custody");
-    const rate=cause==="disk"?HOT_DISK_RATE:placeRate("site",cause);
-    reportCoinLoss({title:"The wallet was the file, and the file is gone",kind:"unrecoverable",btc:hot,cause:"nobackup",scene:cause,odds:{monthly:rate,note:"The chance was small whatever you did, but a backup kept away from the mine would have turned it into an afternoon's work."},from:"your online wallet",
-      what:`${title}. Nothing else held the key, so ${fmtBtc(hot)} is still on the chain at addresses nobody can spend from.`,
-      why:"A software key is a file. With one copy of it, the coins are exactly as safe as one disk, in one building.",
-      remedy:"Write the key down and keep it somewhere the mine cannot reach: a copy in a bank box or a trusted person's house survives the thing that took the computer.",tab:"custody"});
+    const cooked=!!key.passphrase&&(custodyKeyRestorable(key)||hotSheetRestorable(key));
+    if(cooked){
+      log("Online wallet lost",`-${fmtBtc(hot)} · the passphrase slip is gone`,"custody");
+      reportCoinLoss({title:"The passphrase is gone, and so are the coins",kind:"unrecoverable",btc:hot,cause:"nobackup",scene:cause,odds:{monthly:cause==="disk"?HOT_DISK_RATE:placeRate("site",cause),note:"The seed copy survived. The passphrase slip did not, so the wallet cannot be rebuilt."},from:"your online wallet",
+        what:`${title}. A seed copy is still intact. The passphrase slip is not, so ${fmtBtc(hot)} is still on the chain at addresses nobody can spend from.`,
+        why:"A passphrase stops someone who finds the seed. It also means the seed alone is not a backup. Lose the slip and a lost computer cannot be rebuilt.",
+        remedy:"Keep the passphrase slip somewhere a fire cannot take it with the only seed copy, and remember that the slip by itself spends nothing.",tab:"custody"});
+    } else {
+      log("Online wallet lost",`-${fmtBtc(hot)} · the computer ${verb} and nothing else held the key`,"custody");
+      const rate=cause==="disk"?HOT_DISK_RATE:placeRate("site",cause);
+      reportCoinLoss({title:"The wallet was the file, and the file is gone",kind:"unrecoverable",btc:hot,cause:"nobackup",scene:cause,odds:{monthly:rate,note:"The chance was small whatever you did, but a backup kept away from the mine would have turned it into an afternoon's work."},from:"your online wallet",
+        what:`${title}. Nothing else held the key, so ${fmtBtc(hot)} is still on the chain at addresses nobody can spend from.`,
+        why:"A software key is a file. With one copy of it, the coins are exactly as safe as one disk, in one building.",
+        remedy:"Write the key down and keep it somewhere the mine cannot reach: a copy in a bank box or a trusted person's house survives the thing that took the computer.",tab:"custody"});
+    }
   } else log("Online wallet replaced",`${title}. There was nothing in it`,"custody");
   replaceHotKey(key);
   return "lost";
@@ -117,12 +165,43 @@ function hotKeyStolen(cause,next=state.time,silent=false){
   } else log("Online wallet replaced","The key was taken. There was nothing in it","custody");
   replaceHotKey(key);
 }
-/* Called by every place incident, after the generic damage is done, so a backup the incident destroyed is already gone. */
+function hotCeremonyActive(key){
+  return !!(key.passphrase||key.diceSheet||key.passphraseBackup||key.seedKnown||key.passKnown);
+}
+/* Called by every place incident, after the generic damage is done, so a backup the incident destroyed is already gone.
+   A key with no sheet and no passphrase takes the original path, so a run that never used the new choices is unchanged. */
 function hotKeyAfterIncident(placeId,kind,next,silent=false){
   const key=hotKey();if(!key||hotKeyGrace())return;
-  // Somebody took the seed backup: they hold the key, wherever the computer is.
-  if((kind==="burglary"||kind==="seizure"||kind==="betrayal")&&key.exposed&&key.exposed.at===next)return hotKeyStolen(kind,next,silent);
-  if(placeId!=="site")return;
+  const takes=kind==="burglary"||kind==="seizure"||kind==="betrayal";
+  if(!hotCeremonyActive(key)){
+    if(takes&&key.exposed&&key.exposed.at===next)return hotKeyStolen(kind,next,silent);
+    if(placeId!=="site")return;
+    if(kind==="burglary")return hotKeyStolen("burglary",next,silent);
+    return hotKeyLost(kind,next,silent);
+  }
+  // The wallet on the mining computer is already open. A break-in spends it, passphrase or not.
+  if(placeId==="site"&&kind==="burglary")return hotKeyStolen("burglary",next,silent);
+  if(takes){
+    const seedNow=!!((key.seedKnown&&key.seedKnown.at===next)||(key.exposed&&key.exposed.at===next));
+    const passNow=!!(key.passKnown&&key.passKnown.at===next);
+    const seedHeld=!!(key.seedKnown||key.exposed);
+    const passHeld=!!key.passKnown;
+    if((seedNow||passNow)&&seedHeld&&(!key.passphrase||passHeld))return hotKeyStolen(kind,next,silent);
+    if(seedNow&&key.passphrase&&!passHeld){
+      log("Seed copy taken","The passphrase stopped the spend","custody");
+      if(!silent)showToast("They have the seed, not the passphrase","A copy of the key was taken. Without the passphrase it cannot spend. If the passphrase slip is taken later, it can.","warning","custody");
+      return;
+    }
+    if(passNow&&!seedHeld){
+      log("Passphrase slip taken","Useless without the seed","custody");
+      if(!silent)showToast("They have the passphrase, not the seed","The slip spends nothing by itself.","notice","custody");
+      return;
+    }
+  }
+  if(placeId!=="site"){
+    if(!silent&&key.passphrase&&!hotPassRestorable(key)&&(kind==="fire"||kind==="flood"))showToast("The passphrase slip is gone","The computer can still spend. If that computer is lost, the seed cannot rebuild the wallet.","warning","custody");
+    return;
+  }
   if(kind==="burglary")return hotKeyStolen("burglary",next,silent);
   return hotKeyLost(kind,next,silent);
 }

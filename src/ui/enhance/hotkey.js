@@ -6,6 +6,18 @@
    lives, whether anything else holds it, and what losing the computer would cost. Moving its backup is
    done from the places card below, like any other backup. */
 
+function hotCeremonyNote(key){
+  const sheet=key.diceSheet&&!key.diceSheet.destroyed?key.diceSheet:null;
+  const slip=key.passphraseBackup&&!key.passphraseBackup.destroyed?key.passphraseBackup:null;
+  if(!sheet&&!key.passphrase)return "";
+  const bits=[];
+  if(sheet){
+    const where=placeSay(custodyPlaceId(sheet.place));
+    bits.push(`Roll sheet kept at ${where}. It can rebuild this wallet. It is not the written backup, and anyone who finds it can copy the key.${custodyPlaceId(sheet.place)==="site"?" It is in the same building as the computer until you move it.":""}`);
+  }
+  if(key.passphrase)bits.push(slip?`Passphrase slip at ${placeSay(custodyPlaceId(slip.place))}. A found seed cannot spend without it. Lose the slip and a lost computer cannot be rebuilt.`:"The passphrase slip is gone. This computer can still spend. If it is lost, the coins are gone.");
+  return `<p class="modal-note">${bits.join(" ")}</p>`;
+}
 function hotWalletCard(){
   const key=hotKey();if(!key)return "";
   const hot=state.wallets.hot||0,backed=hotKeyBackedUp(),b=key.backup;
@@ -23,6 +35,7 @@ function hotWalletCard(){
       <div class="metric"><div class="label">Modelled disk-failure risk</div><strong>${year.toFixed(1)}% a year</strong><small>${hot>0?`${chance.toFixed(2)}% a month`:"nothing in it to lose"}</small></div>
     </div>
     <div class="risk ${tone}">${!backed?(hot>0?"There is one copy of this key, on the computer. A fire, a break-in or a failed disk would take every coin in the wallet.":"There is one copy of this key. Back it up before the first coins arrive."):together?"The backup is kept at the mine, beside the computer: a fire or a flood takes both. Move it to a bank box or a trusted person's house.":b.durability!=="steel"?"The backup is on paper, which a fire or a flood destroys wherever it is kept.":"This backup can restore the key after the computer is lost, provided the backup survives and remains accessible. Steel resists damage; it does not stop someone reading the secret."}</div>
+    ${hotCeremonyNote(key)}
     ${buttons?`<div class="actions">${buttons}</div>`:""}
     <p class="modal-note">The online wallet is convenient because the mining computer can sign immediately. That also puts spending authority on a connected machine. A separate cold-storage setup reduces that exposure, but takes preparation and time to spend from. The percentages here are modelled game risks; the campaign protects this wallet from loss for its first 60 days.</p>
   </div></section>`;

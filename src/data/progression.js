@@ -130,7 +130,8 @@ const LEARNING=[
   {id:"audible",type:"Podcast",date:"2019-01-01",title:"Bitcoin Audible",author:"Subscribe to the feed",days:11,reward:1,desc:"Long-form readings and discussions of Bitcoin research, history and technical writing."},
   {id:"tftc",type:"Podcast",date:"2020-01-01",title:"Tales from the Crypt",author:"Subscribe to the feed",days:10,reward:1,desc:"Builder and operator interviews from the Bitcoin industry."},
   {id:"miningpod",type:"Podcast",date:"2021-01-01",title:"The Mining Pod",author:"Subscribe to the feed",days:12,reward:1,desc:"Mining-market discussion focused on fleets, energy and infrastructure."},
-  {id:"podsignal",type:"Podcast",date:"2020-01-01",title:"Market Signal briefing",author:"Subscribe to the feed",days:9,reward:1,desc:"Short cycle briefings that help frame market and treasury decisions."}
+  {id:"podsignal",type:"Podcast",date:"2020-01-01",title:"Market Signal briefing",author:"Subscribe to the feed",days:9,reward:1,desc:"Short cycle briefings that help frame market and treasury decisions."},
+  {id:"bip39pass",type:"Note",date:"2013-09-10",title:"A passphrase on the seed",author:"BIP39",days:3,reward:1,check:{q:"Someone finds the seed, and you set a passphrase. What can they spend?",options:["Nothing, until they also have the passphrase","The coins, because the seed is enough","Only the coins in cold storage"],answer:0},desc:"BIP39 lets you add a passphrase. People call it a 25th word. The spec calls it a passphrase. It stops a found seed from spending. Lose the passphrase and the seed cannot spend either. Keep the slip somewhere the seed is not."}
 ];
 const NODE_STORAGE=[
   {gb:50,cost:0,date:"2009-01-03",name:"50 GB disk"},

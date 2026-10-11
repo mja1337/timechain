@@ -150,17 +150,23 @@ function custodySignerDays(s=state){
 /* ---- what is kept where --------------------------------------------------------------- */
 
 function placeItems(place,s=state){
-  const c=s.custody,out={devices:[],backups:[],config:0};
+  const c=s.custody,out={devices:[],backups:[],config:0,sheets:[],passes:[]};
   (c.devices||[]).forEach(d=>{if(!d.destroyed&&d.place&&custodyPlaceId(d.place,s)===place)out.devices.push(d)});
-  (c.keys||[]).forEach(k=>{if(k.backup&&!k.backup.destroyed&&k.backup.place&&custodyPlaceId(k.backup.place,s)===place)out.backups.push(k)});
+  (c.keys||[]).forEach(k=>{
+    if(k.backup&&!k.backup.destroyed&&k.backup.place&&custodyPlaceId(k.backup.place,s)===place)out.backups.push(k);
+    if(k.diceSheet&&!k.diceSheet.destroyed&&k.diceSheet.place&&custodyPlaceId(k.diceSheet.place,s)===place)out.sheets.push(k);
+    if(k.passphraseBackup&&!k.passphraseBackup.destroyed&&k.passphraseBackup.place&&custodyPlaceId(k.passphraseBackup.place,s)===place)out.passes.push(k);
+  });
   if(c.configBackedUp)custodyConfigLocations(c).forEach(p=>{if(p&&custodyPlaceId(p,s)===place)out.config++});
   return out;
 }
-function placeHolds(items){return items.devices.length+items.backups.length+(items.config||0)}
+function placeHolds(items){return items.devices.length+items.backups.length+(items.config||0)+(items.sheets?items.sheets.length:0)+(items.passes?items.passes.length:0)}
 function placeSentence(items){
   const parts=[];
   if(items.devices.length)parts.push(`${items.devices.length} signer${items.devices.length===1?"":"s"}`);
   if(items.backups.length)parts.push(`${items.backups.length} seed backup${items.backups.length===1?"":"s"}`);
+  if(items.sheets&&items.sheets.length)parts.push(items.sheets.length===1?"a roll sheet":`${items.sheets.length} roll sheets`);
+  if(items.passes&&items.passes.length)parts.push(items.passes.length===1?"a passphrase slip":`${items.passes.length} passphrase slips`);
   if(items.config)parts.push(items.config===1?"a copy of the wallet configuration":`${items.config} copies of the wallet configuration`);
   return parts.join(", ")||"nothing";
 }
@@ -189,7 +195,7 @@ function advancePlaceRisks(next,silent=false){
     const items=placeItems(place.id);if(!placeHolds(items))continue;
     if(place.fee>0&&state.cash>=place.fee){state.cash-=place.fee;log(`${place.name} fee`,`-${fmtUsd(place.fee)}`,"custody")}
     for(const kind of CUSTODY_PLACE_KINDS){
-      if(kind==="betrayal"&&!trustedReadableBackups(place.id).length)continue;
+      if(kind==="betrayal"&&!trustedReadableBackups(place.id).length&&!trustedHoldsCeremonyPaper(place.id))continue;
       if(hashRoll(state.seed,"place",month,place.id,kind)<placeRate(place.id,kind)){applyPlaceIncident(place.id,kind,next,silent);break}
     }
   }
@@ -211,8 +217,31 @@ function applyPlaceIncident(placeId,kind,next,silent=false){
 function trustedReadableBackups(placeId){
   return placeId==="trusted"?placeItems(placeId).backups.filter(k=>!k.retired&&!k.exposed):[];
 }
+function ceremonyPaperHere(item,placeId){return !!(item&&!item.destroyed&&item.place&&custodyPlaceId(item.place)===placeId)}
+function trustedHoldsCeremonyPaper(placeId){
+  const key=typeof hotKey==="function"?hotKey():null;if(!key||placeId!=="trusted")return false;
+  return ceremonyPaperHere(key.diceSheet,placeId)||ceremonyPaperHere(key.passphraseBackup,placeId);
+}
+function noteCeremonyPaperRead(placeId,next){
+  const key=typeof hotKey==="function"?hotKey():null;if(!key)return;
+  if(ceremonyPaperHere(key.diceSheet,placeId))key.seedKnown={cause:"betrayal",at:next,via:"sheet"};
+  if(ceremonyPaperHere(key.passphraseBackup,placeId))key.passKnown={cause:"betrayal",at:next};
+}
+function loseCeremonyPaper(key,field,kind,takes,next,bucket){
+  const item=key[field];if(!item||item.destroyed)return;
+  if(!takes&&item.durability==="steel")return;
+  key[field]={...item,destroyed:true,cause:kind};
+  bucket.push(key);
+  if(!takes)return;
+  if(field==="diceSheet")key.seedKnown={cause:kind,at:next,via:"sheet"};
+  if(field==="passphraseBackup")key.passKnown={cause:kind,at:next};
+}
 function applyTrustedBetrayal(placeId,next,silent=false){
-  const backups=trustedReadableBackups(placeId);if(!backups.length)return;
+  noteCeremonyPaperRead(placeId,next);
+  const backups=trustedReadableBackups(placeId);if(!backups.length){
+    if(typeof hotKeyAfterIncident==="function")hotKeyAfterIncident(placeId,"betrayal",next,silent);
+    return;
+  }
   const secrets=new Set(backups.map(k=>k.seed||k.id)),assigned=custodyAssignedKeys(),policy=custodyPolicy(state.custody.policy);
   for(const key of state.custody.keys||[])if(!key.retired&&secrets.has(key.seed||key.id))key.exposed={cause:"betrayal",at:next};
   const known=new Set(assigned.filter(k=>secrets.has(k.seed||k.id)).map(k=>k.seed||k.id));
@@ -231,7 +260,7 @@ function applyTrustedBetrayal(placeId,next,silent=false){
 function applyPlaceIncidentBase(placeId,kind,next,silent=false){
   const c=state.custody,place=custodyPlace(placeId),policy=custodyPolicy(c.policy),items=placeItems(placeId);
   const before=custodyOperable(),assigned=new Map(custodyAssignedKeys().map(k=>[k.id,k.seed||k.id]));
-  const lost={devices:[],backups:[],config:0},stolen=new Set(),kept=[];
+  const lost={devices:[],backups:[],config:0,sheets:[],passes:[]},stolen=new Set(),kept=[];
   // A seizure takes what a burglary takes, steel included: nobody asks whether the plate was fireproof.
   const takes=kind==="burglary"||kind==="seizure",taker=kind==="seizure"?"The authorities":"Burglars";
   items.devices.forEach(d=>{d.destroyed={at:next,cause:kind};lost.devices.push(d)});
@@ -241,6 +270,8 @@ function applyPlaceIncidentBase(placeId,kind,next,silent=false){
     k.backup={...k.backup,destroyed:true,cause:kind};lost.backups.push(k);
     if(takes){k.exposed={cause:kind,at:next};if(assigned.has(k.id))stolen.add(assigned.get(k.id))}
   });
+  (items.sheets||[]).forEach(k=>loseCeremonyPaper(k,"diceSheet",kind,takes,next,lost.sheets));
+  (items.passes||[]).forEach(k=>loseCeremonyPaper(k,"passphraseBackup",kind,takes,next,lost.passes));
   // The descriptor is paper in every place there is.
   if(items.config){
     const here=p=>p&&custodyPlaceId(p)===placeId,locations=custodyConfigLocations(c),left=locations.filter(p=>!here(p));
@@ -248,7 +279,7 @@ function applyPlaceIncidentBase(placeId,kind,next,silent=false){
     if(left.length===0){c.configBackedUp=false;delete c.configPlace;c.configCopies=[]}
     else{c.configPlace=left[0];c.configCopies=left.slice(1)}
   }
-  const [what]=PLACE_KIND_WORDS[kind],gone=placeSentence({devices:lost.devices,backups:lost.backups,config:lost.config});
+  const [what]=PLACE_KIND_WORDS[kind],gone=placeSentence({devices:lost.devices,backups:lost.backups,config:lost.config,sheets:lost.sheets,passes:lost.passes});
   const title=`${what} at ${placeSay(place)}`;
   log(title,gone==="nothing"?"Nothing was lost":`Lost: ${gone}`,"custody");
   const held=(state.wallets.hot||0)+(state.wallets.cold||0);
@@ -262,7 +293,8 @@ function applyPlaceIncidentBase(placeId,kind,next,silent=false){
       remedy:policy.threshold>1?"Keep the keys of a quorum in different places: one stolen seed then spends nothing.":"A single seed in a single place is a single point of failure. Keep a second copy apart, and move the signer and the backup to different places.",tab:"custody"});
     return;
   }
-  const tellMeAnyway=lost.devices.length||lost.backups.length||lost.config;
+  const paperLost=(lost.sheets?lost.sheets.length:0)+(lost.passes?lost.passes.length:0);
+  const tellMeAnyway=lost.devices.length||lost.backups.length||lost.config||paperLost;
   const after=custodyOperable();
   if(before&&!after){
     const taken=strandSelfHeld(`${placeId}-${kind}`,next);
@@ -273,7 +305,7 @@ function applyPlaceIncidentBase(placeId,kind,next,silent=false){
     return;
   }
   if(!silent)showToast(tellMeAnyway?title:`${title}, and nothing was lost`,
-    tellMeAnyway?`${gone[0].toUpperCase()+gone.slice(1)} ${lost.devices.length+lost.backups.length+lost.config===1?"was":"were"} destroyed${stolen.size?` or stolen. ${stolen.size===1?"That seed is":"Those seeds are"} now known to somebody else, so replace ${stolen.size===1?"that key":"those keys"}`:""}. ${after?"The wallet can still be rebuilt from what survives.":""}`
+    tellMeAnyway?`${gone[0].toUpperCase()+gone.slice(1)} ${lost.devices.length+lost.backups.length+lost.config+paperLost===1?"was":"were"} destroyed${stolen.size?` or stolen. ${stolen.size===1?"That seed is":"Those seeds are"} now known to somebody else, so replace ${stolen.size===1?"that key":"those keys"}`:""}. ${after?"The wallet can still be rebuilt from what survives.":""}`
     :`${what} reached ${placeSay(place)} and the steel backups there came through it. This is what they are for.`,tellMeAnyway?"bad":"success","custody");
 }
 
@@ -285,6 +317,8 @@ function custodyItemRef(kind,id){
   const c=state.custody;
   if(kind==="device"){const d=(c.devices||[]).find(x=>x.uid===id&&!x.destroyed);return d?{get:()=>d.place,set:v=>{d.place=v},name:custodyProduct(d.product)?.name||"Signer"}:null}
   if(kind==="backup"){const k=custodyKey(id);return k&&k.backup&&!k.backup.destroyed?{get:()=>k.backup.place,set:v=>{k.backup.place=v},name:`${k.label} seed backup`}:null}
+  if(kind==="dicesheet"){const k=custodyKey(id);return k&&k.diceSheet&&!k.diceSheet.destroyed?{get:()=>k.diceSheet.place,set:v=>{k.diceSheet.place=v},name:`${k.label} roll sheet`}:null}
+  if(kind==="passphrase"){const k=custodyKey(id);return k&&k.passphraseBackup&&!k.passphraseBackup.destroyed?{get:()=>k.passphraseBackup.place,set:v=>{k.passphraseBackup.place=v},name:`${k.label} passphrase slip`}:null}
   if(kind==="configcopy")return c.configBackedUp?{get:()=>c.configPlace,set:()=>{},name:"A copy of the wallet configuration",copy:true}:null;
   return null;
 }

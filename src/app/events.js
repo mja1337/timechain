@@ -43,6 +43,9 @@ document.getElementById("app").addEventListener("click",e=>{
   else if(a==="dice-finish"){if(typeof diceBusy==="function"&&diceBusy())return;finishRolling()}
   else if(a==="wallet-paper-recorded")recordWalletPaper();
   else if(a==="wallet-paper-destroyed")destroyWalletPaper();
+  else if(a==="wallet-paper-kept")keepWalletPaper();
+  else if(a==="wallet-passphrase-skip")declineWalletPassphrase();
+  else if(a==="wallet-passphrase-place")placeWalletPassphrase(v);
   else if(a==="wallet-oath")takeWalletOath();
   else if(a==="wallet-setup-skip")skipWalletSetup();
   else if(a==="wallet-setup-done")completeWalletSetup(v==="backup");

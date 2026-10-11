@@ -169,7 +169,11 @@ function normalizeCustodyPlaces(c){
   const ok=id=>typeof id==="string"&&(id==="transit"||CUSTODY_PLACES.some(p=>p.id===id));
   (c.devices||[]).forEach(d=>{if(d.place!==undefined&&!ok(d.place))delete d.place;
     if(d.destroyed&&typeof d.destroyed!=="object")d.destroyed={cause:"lost"}});
-  (c.keys||[]).forEach(k=>{if(k.backup&&typeof k.backup==="object"&&k.backup.place!==undefined&&!ok(k.backup.place))delete k.backup.place});
+  (c.keys||[]).forEach(k=>{
+    for(const field of ["backup","diceSheet","passphraseBackup"]){
+      const item=k[field];if(item&&typeof item==="object"&&item.place!==undefined&&!ok(item.place))delete item.place;
+    }
+  });
   if(c.configPlace!==undefined&&!ok(c.configPlace))delete c.configPlace;
   c.configCopies=(Array.isArray(c.configCopies)?c.configCopies:[]).filter(p=>ok(p)&&p!=="transit");
   c.moves=(Array.isArray(c.moves)?c.moves:[]).filter(m=>m&&ok(m.to)&&m.to!=="transit"&&Number.isFinite(Number(m.due))&&typeof m.kind==="string");
@@ -179,7 +183,11 @@ function normalizeCustodyPlaces(c){
   // Something marked in transit with no journey under way would be stuck there for ever.
   const travelling=(kind,id)=>c.moves.some(m=>m.kind===kind&&m.id===id);
   (c.devices||[]).forEach(d=>{if(d.place==="transit"&&!travelling("device",d.uid))d.place="site"});
-  (c.keys||[]).forEach(k=>{if(k.backup&&k.backup.place==="transit"&&!travelling("backup",k.id))k.backup.place="site"});
+  (c.keys||[]).forEach(k=>{
+    if(k.backup&&k.backup.place==="transit"&&!travelling("backup",k.id))k.backup.place="site";
+    if(k.diceSheet&&k.diceSheet.place==="transit"&&!travelling("dicesheet",k.id))k.diceSheet.place="site";
+    if(k.passphraseBackup&&k.passphraseBackup.place==="transit"&&!travelling("passphrase",k.id))k.passphraseBackup.place="site";
+  });
   if(c.configPlace==="transit")c.configPlace="site";
   return c;
 }
