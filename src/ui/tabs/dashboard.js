@@ -2,8 +2,7 @@
 
 /* UI LAYER - rendering is split by game system so future features stay local. */
 function renderHeader(){
-  const fs=fleet(),mc=monthlyCost(),online=operating(),p=priceAt(state.time),forecast=settlementForecast(),runway=mc.total?state.cash/mc.total:Infinity;
-  const tickerBtc=value=>fmtBtc(value).replace(/ BTC$/,"");
+  const forecast=settlementForecast();
   const speedButtons=[0,.5,1,2,4,8,16].map(s=>`<button class="speed ${state.speed===s?"active":""}" data-action="speed" data-value="${s}" aria-label="${s===0?"Pause":s+" times speed"}">${s===0?"Ⅱ":s+"×"}</button>`).join("");
   const mobileSections={play:{label:"Play",detail:"Time & session",tabs:["dashboard","ledger"]},operate:{label:"Operate",detail:"Fleet & site",tabs:["mine","facilities","energy","pools"]},treasury:{label:"Treasury",detail:"Capital & keys",tabs:["market","custody","finance"]},learn:{label:"Learn",detail:"Knowledge & rules",tabs:["learn","tech","method"]}},section=mobileSections[mobileMenuSection]||mobileSections.play;
   const mobileNav=`<section class="mobile-nav ${mobileMenuOpen?"open":""}" aria-label="Mobile navigation"><div class="mobile-menu-sections">${Object.entries(mobileSections).map(([id,item])=>`<button class="${mobileMenuSection===id?"active":""}" data-action="mobile-menu-section" data-value="${id}"><b>${item.label}</b><small>${item.detail}</small></button>`).join("")}</div><div class="mobile-menu-panel"><div class="mobile-menu-panel-head"><span>${section.label}</span><b>${section.detail}</b></div>${mobileMenuSection==="play"?`<div class="mobile-speed-panel"><div><span>Simulation speed</span><b data-live-speed-panel>${state.speed?`${state.speed}× running`:"Paused"}</b></div><div class="mobile-speeds" aria-label="Mobile simulation speed">${speedButtons}</div></div>`:""}<div class="mobile-nav-tabs">${section.tabs.map(t=>`<button class="${tabIsActive(t)?"active":""}" data-action="tab" data-value="${t}">${t}</button>`).join("")}</div></div></section>`;
@@ -18,30 +17,7 @@ function renderHeader(){
     <button class="mobile-pause-button ${state.speed?"running":"paused"}" data-action="speed" data-value="${state.speed?0:(state.returnSpeed||1)}" aria-label="${state.speed?"Pause simulation":"Run simulation"}"><span class="pause-icon" aria-hidden="true">${state.speed?"Ⅱ":"▶"}</span><span class="pause-label">${state.speed?"Pause":"Run"}</span></button>
     <button class="mobile-menu-button ${mobileMenuOpen?"active":""}" data-action="mobile-menu" aria-label="Menu, ${mobileMenuOpen?"close":"open"} navigation" aria-expanded="${mobileMenuOpen}"><i></i><i></i><i></i><span>Menu</span></button>
   </header>
-  <section class="ticker" aria-label="Bitcoin network dashboard">
-    <div class="ticker-group"><div class="ticker-group-label">Your money</div><div class="ticker-group-values">
-    <div class="tick"><div class="label">Cash available</div><div id="live-fiat" class="value green">${fmtUsd(state.cash)}</div><div class="subvalue">Pays your operating bills</div></div>
-    <div class="tick"><div class="label">Investments</div><div id="live-illiquid-fiat" class="value">${fmtUsd(equityValue())}</div><div class="subvalue">ETF + Strategy shares</div></div>
-    <div class="tick"><div class="label">Self-held BTC</div><div id="live-controlled-btc" class="value green">${tickerBtc(controlled())}</div><div class="subvalue">Your keys can spend it · BTC</div></div>
-    <div class="tick"><div class="label">Custodial BTC</div><div id="live-custodial-btc" class="value orange">${tickerBtc(claims())}</div><div class="subvalue">A company holds the keys · BTC</div></div>
-    <div class="tick"><div class="label">Lightning locked</div><div id="live-lightning-btc" class="value ${lightningAvailable()?"":"dim"}">${tickerBtc(lightningLocked())}</div><div class="subvalue">${lightningAvailable()?"Set aside for fast payments · withdraw before ordinary spending":"Unlocks 15 Mar 2018"}</div></div>
-    <div class="tick"><div class="label">Net worth</div><div id="live-worth" class="value">${fmtUsd(netWorth())}</div><div class="subvalue">Assets less liabilities</div></div>
-    </div></div>
-    <div class="ticker-group"><div class="ticker-group-label">Your operation</div><div class="ticker-group-values">
-    <div class="tick"><div class="label">Your hash rate</div><div id="live-your-hash" class="value ${online?"green":"red"}">${fmtHash(online?fs.hash:0)}</div><div id="live-your-status" class="subvalue">${online?"Your mining work each second":`offline · ${fmtHash(fs.hash)} idle`}</div></div>
-    <div class="tick"><div class="label">Power draw</div><div id="live-power" class="value">${fs.kw.toFixed(2)} kW</div><div id="live-power-rate" class="subvalue">${fmtUsd(mc.rate)}/kWh</div></div>
-    <div class="tick"><div class="label">Cash runway</div><div id="live-runway" class="value ${runway<2?"red":runway<6?"orange":"green"}">${Number.isFinite(runway)?`${runway.toFixed(1)} mo`:"∞"}</div><div id="live-runway-detail" class="subvalue">${fmtUsd(mc.total)}/month at current burn</div></div>
-    <div class="tick"><div class="label">Next bill</div><div id="live-next-bill" class="value ${forecast.cashAfter<0?"red":forecast.cashAfter<forecast.estimated*.2?"orange":""}">${fmtUsd(forecast.estimated)}</div><div id="live-next-bill-detail" class="subvalue">Due ${dateFmt(forecast.dueAt,true)} · ${fmtUsd(forecast.cashAfter)} after</div></div>
-    </div></div>
-    <div class="ticker-group"><div class="ticker-group-label">Bitcoin network</div><div class="ticker-group-values">
-    <div class="tick"><div class="label">BTC / USD</div><div id="live-price" class="value orange">${state.time<MARKET?"NO MARKET":fmtUsd(p)}</div><div class="subvalue">recorded daily composite</div></div>
-    <div class="tick"><div class="label">Network hash rate</div><div id="live-network-hash" class="value">${fmtHash(competitiveHashAt(state.time,fs.hash))}</div><div class="subvalue">Everyone's combined mining work each second</div></div>
-    <div class="tick"><div class="label">Difficulty</div><div id="live-difficulty" class="value">${fmtDiff(difficultyAt(state.time))}</div><div class="subvalue">How hard it is to find the next block · holds until the next retarget</div></div>
-    <div class="tick"><div class="label">New BTC / block</div><div id="live-subsidy" class="value">${fmtSubsidy(subsidyAt(state.time))}</div><div class="subvalue">New bitcoin paid to the winning miner</div></div>
-    <div class="tick"><div class="label">Fees / block</div><div id="live-fees" class="value">${fmtBtc(feeAt(state.time))}</div><div class="subvalue">Fees paid by users in a block · 7-day mean</div></div>
-    <div class="tick"><div class="label">Transactions</div><div id="live-transactions" class="value">${fmtNum(txAt(state.time))}</div><div class="subvalue">Payments in a block · 7-day mean</div></div>
-    </div></div>
-  </section>${mobileNav}`
+  ${hudMarkup()}${mobileNav}`
 }
 function nav(){
   const tabs=["dashboard","mine","pools","treasury","facilities","energy","learn","tech","ledger","method"];
@@ -132,6 +108,6 @@ function dashboard(){
 
     <div class="dashboard-chapter span-12"><span>03 / Progress</span><h2>How well are you running the operation?</h2><p>Your score rewards paid bills, profitable mining, uptime and a fleet that keeps pace with its era.</p></div>
     ${operatorScoreVisual()}
-    <section class="card span-12"><div class="card-head"><h2>Operator controls</h2><div class="meta">${state.mode.toUpperCase()} MINING</div></div><div class="card-pad actions"><button class="action ${state.power?"danger":"primary"}" data-action="toggle-power" ${state.debt||state.policyLock?"disabled":""}>${state.power?"Shut miners down":"Start miners"}</button><button class="action ${state.mode==="solo"?"primary":""}" data-action="mode" data-value="solo">Solo</button><button class="action ${state.mode==="pool"?"primary":""}" data-action="mode" data-value="pool" ${!availablePool()?"disabled":""}>Pool ${availablePool()?`· ${poolData().name} · ${(poolFee()*100).toFixed(2)}% fee`:"unavailable"}</button><button class="action" data-action="tab" data-value="mine">Buy hardware</button><button class="action" data-action="tab" data-value="market" ${state.time<MARKET?"disabled":""}>Raise cash</button><span id="dashboard-bill" class="push label">Next bill accrued: ${fmtUsd(state.bill)}</span></div></section>
+    <section class="card span-12"><div class="card-head"><h2>Operator controls</h2><div class="meta">${state.mode.toUpperCase()} MINING</div></div><div class="card-pad actions">${sitePowerButtonHtml({place:"dashboard",small:false})}<button class="action ${state.mode==="solo"?"primary":""}" data-action="mode" data-value="solo">Solo</button><button class="action ${state.mode==="pool"?"primary":""}" data-action="mode" data-value="pool" ${!availablePool()?"disabled":""}>Pool ${availablePool()?`· ${poolData().name} · ${(poolFee()*100).toFixed(2)}% fee`:"unavailable"}</button><button class="action" data-action="tab" data-value="mine">Buy hardware</button><button class="action" data-action="tab" data-value="market" ${state.time<MARKET?"disabled":""}>Raise cash</button><span id="dashboard-bill" class="push label">Next bill accrued: ${fmtUsd(state.bill)}</span></div></section>
   </div>`
 }

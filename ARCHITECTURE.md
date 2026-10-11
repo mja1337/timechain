@@ -56,6 +56,7 @@
 - `src/ui/transaction-preview.js` - the review shown before a money action.
 - `src/ui/chart-legend.js` - the shared chart key (swatch in the series' own line style, label, value, units note) used by every chart.
 - `src/ui/topbar-cash.js` - the always-visible cash readout in the sticky topbar (state.cash, with overdrawn/arrears/short-of-bill states).
+- `src/ui/hud.js` - the key-numbers bar under the topbar, and the Stats and Decisions pop-outs. Loaded before `dashboard.js`, whose header calls `hudMarkup()`. The emergency-stop confirmation (`requestSitePowerToggle`) lives here so it stays out of the simulation; `toggleSitePower()` in `settlement.js` is unchanged. The arming timer is not saved.
 - `src/ui/presentation.js` - formatting, charts and reusable visual helpers.
 - `src/ui/tabs/` - base tab markup split into Dashboard, Mine, Ledger, Market, operations and Method ownership.
 - `src/ui/enhance/` - post-render visuals split into Mine/Market, custody and operating-system ownership.

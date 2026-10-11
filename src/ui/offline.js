@@ -71,5 +71,5 @@ function offlineSidebarHtml(){
 function applyOfflineChrome(){
   const cut=typeof internetCut==="function"&&internetCut();
   document.body.classList.toggle("is-offline",cut);
-  document.querySelectorAll(".ticker .tick").forEach(t=>{const name=t.querySelector(".label")?.textContent.trim();t.classList.toggle("offline-masked",cut&&OFFLINE_DARK_TICKS.includes(name))});
+  document.querySelectorAll(".ticker .tick, .hud-stat").forEach(t=>{const name=(t.querySelector(".label")||t.querySelector(".hud-label"))?.textContent.trim();t.classList.toggle("offline-masked",cut&&OFFLINE_DARK_TICKS.includes(name))});
 }
