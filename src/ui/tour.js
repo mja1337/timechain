@@ -189,7 +189,8 @@ function tourAssignAction(){
 function tourMoveAction(){
   const k=tourBackupsAtMine()[0];if(!k)return null;
   const to=state.cash>=custodyPlace("bank").fee*12?"bank":"trusted",name=custodyPlace(to).name;
-  return {label:`Send it to ${to==="bank"?"the bank box":"a trusted house"}`,hint:`Move <b>${k.hot?"your online wallet's backup":`key ${k.label}'s backup`}</b> out of the mine: press <b>→ ${name}</b> beside it in <b>Where things are kept</b> (or the other place, if you prefer). ${tourBackupsAtMine().length} still at the mine.`,
+  const fee=to==="bank"?` · ${fmtUsd(custodyPlace(to).fee)}/month`:" · free";
+  return {label:`Send it to ${to==="bank"?"the bank box":"a trusted house"}${fee}`,hint:`Move <b>${k.hot?"your online wallet's backup":`key ${k.label}'s backup`}</b> out of the mine: press <b>→ ${name}</b> beside it in <b>Where things are kept</b>. ${tourBackupsAtMine().length} still at the mine. ${to==="bank"?"One monthly fee covers every copy in the box.":"The trusted house is free."}`,
     ring:[tourMoveRow,".cold-setup"],run:()=>moveCustodyItem("backup",k.id,to)};
 }
 
@@ -443,6 +444,8 @@ function tourRefreshCard(force=false){
        seconds, and stop the moment the player scrolls for themselves. */
     if(!tourScrolledByPlayer&&Date.now()<tourSettleUntil)tourBringIntoView(el);
   }
+  const card=app.querySelector(".tour-card");
+  document.body.style.setProperty("--tour-card-h",`${card?Math.ceil(card.getBoundingClientRect().height):0}px`);
 }
 /* Called at the end of every full render. */
 function tourAfterRender(){
@@ -455,9 +458,9 @@ function tourAfterRender(){
    sheet across the bottom. Left alone if it is already there. */
 function tourBringIntoView(el){
   if(el.closest(".topbar,.mobile-pause-button"))return;
-  const r=el.getBoundingClientRect(),narrow=window.innerWidth<=800,card=document.querySelector(".tour-card");
+  const r=el.getBoundingClientRect(),narrow=window.innerWidth<=1000,card=document.querySelector(".tour-card");
   const floor=narrow&&card?card.getBoundingClientRect().top-24:window.innerHeight-40;
-  const ceiling=Math.max(...[".topbar",".treasury-sections",".mine-sections",".toast"].map(q=>{const e=document.querySelector(q);if(!e)return 0;const b=e.getBoundingClientRect();return b.bottom>0&&b.top<200?b.bottom:0}),0)+16;
+  const ceiling=Math.max(...[".topbar",".hud",".drawer-head",".treasury-sections",".mine-sections",".toast"].map(q=>{const e=document.querySelector(q);if(!e)return 0;const b=e.getBoundingClientRect();return b.bottom>0&&b.top<200?b.bottom:0}),0)+16;
   if(r.top>=ceiling&&Math.min(r.bottom,r.top+120)<=floor)return;
   window.scrollBy({top:r.top-ceiling-Math.max(0,Math.min(80,(floor-ceiling-r.height)/3)),behavior:"instant"});
 }
@@ -473,3 +476,5 @@ document.addEventListener("keydown",e=>{
 });
 // A player who scrolls or swipes is looking for themselves; the tutorial stops moving the page for this step.
 ["wheel","touchstart"].forEach(type=>window.addEventListener(type,()=>{if(tourActive())tourScrolledByPlayer=true},{passive:true}));
+// A rotation or a breakpoint change moves the card; put the highlighted control back above it.
+window.addEventListener("resize",()=>{if(tourActive()){tourScrolledByPlayer=false;tourSettleUntil=Date.now()+1000;tourRefreshCard()}});
