@@ -2188,4 +2188,42 @@ assert(inline.includes("${topbarCashHtml(forecast)}") && inline.includes("refres
 assert(inline.includes('id="topbar-cash-full" class="cash-full">${fmtUsd(state.cash)}') && inline.includes('id="topbar-cash-compact" class="cash-compact">${fmtCompactUsd(state.cash)}'), "The topbar cash readout must show state.cash - the only money purchases and bills draw on - and nothing added to it");
 assert(/\.topbar-cash strong\{[^}]*font-variant-numeric:tabular-nums[^}]*min-width:11ch/.test(css) && /\.topbar-cash\{[^}]*width:152px/.test(css), "The topbar cash figure has lost its tabular, fixed-width box, so a ticking number will shift the topbar");
 assert(/@media\(max-width:800px\)\{\.topbar-cash\{[^}]*\}\.topbar-cash \.cash-full,\.topbar-cash small\{display:none\}\.topbar-cash \.cash-compact\{display:inline\}/.test(css), "On a phone the topbar cash readout must switch to the compact figure");
+// ENERGY TAB RENDERS. Every card enhanceEnergy() inserts is built in a real engine sandbox and
+// must not throw: 1.2.5 shipped with the tariff desk reading a variable PR #5 had removed, so the
+// Energy tab died on every visit and no text contract noticed. The card list is read from
+// enhanceEnergy() itself, so a card added later is covered without editing this check. The tariff
+// desk's "Load penalty" must quote the multiplier the shared ledger actually charged.
+{
+  const { loadEngine, makeEval } = await import("./engine-harness.mjs");
+  const opsSource = await readFile(new URL("src/ui/enhance/operations.js", root), "utf8");
+  const enhancer = opsSource.match(/function enhanceEnergy\(\)\{([\s\S]*?)\n/);
+  assert(enhancer, "enhanceEnergy() could not be found in src/ui/enhance/operations.js");
+  const cards = [...new Set([...enhancer[1].matchAll(/\$\{(\w+)\(\)\}|insertAdjacentHTML\("afterbegin",(\w+)\(\)\)/g)].map(m => m[1] || m[2]))];
+  assert(cards.includes("energyTariffVisual") && cards.includes("energyPlanModel") && cards.length >= 4, `enhanceEnergy() no longer inserts the cards this check expects: ${cards.join(", ")}`);
+  const scenarios = [
+    ["a fresh 2009 laptop", ""],
+    ["a curtailment contract during the 2021 China exodus", `state.time=at("2021-06-15");state.contract="curtail";state.hardware={s9:2}`],
+    ["a fixed PPA in the 2022 energy shock", `state.time=at("2022-09-01");state.contract="fixed";state.hardware={s19:1}`],
+    ["a site loaded past the 55% threshold", `state.time=at("2018-03-01");state.hardware={};{const per=fleet().cap;state.hardware={s9:1};const kw=fleet().kw;state.hardware={s9:Math.max(1,Math.floor(per*.9/Math.max(kw,1e-6)))}}`],
+  ];
+  let sawPenalty = false;
+  for (const [label, setup] of scenarios) {
+    const sb = loadEngine();
+    for (const file of ["src/ui/presentation.js", "src/ui/chart-legend.js", "src/ui/enhance/operations.js"]) {
+      vm.runInContext(await readFile(new URL(file, root), "utf8"), sb, { filename: file });
+    }
+    const ev = makeEval(sb);
+    ev(`state.started=true;${setup}`);
+    for (const card of cards) {
+      let html = "";
+      try { html = ev(`${card}()`); } catch (e) { assert(false, `The Energy tab throws in ${card}() for ${label}: ${e.message}`); }
+      assert(typeof html === "string" && html.length > 200 && !/undefined|NaN/.test(html.replace(/<[^>]*>/g, " ")), `${card}() renders empty or shows undefined/NaN for ${label}`);
+    }
+    const desk = ev("energyTariffVisual()"), factor = ev("siteEnergyDaily({nodeWatts:0}).loadFactor"), load = ev("(()=>{const f=fleet();return f.cap?f.kw/f.cap:0})()");
+    const shown = desk.match(/Load penalty<\/div><strong[^>]*>([\d.]+)×/);
+    assert(shown && Math.abs(Number(shown[1]) - factor) < 0.006, `The tariff desk's load penalty (${shown && shown[1]}) is not the multiplier the energy ledger charges (${factor.toFixed(3)}) for ${label}`);
+    if (load > .55) { sawPenalty = true; assert(factor > 1, `A site at ${(load * 100).toFixed(0)}% of capacity should pay a load penalty above 1×`); }
+  }
+  assert(sawPenalty, "No Energy-tab scenario actually exercised the load penalty above 55% of capacity");
+}
 console.log("UI contracts passed: Mine purchases, difficulty and mobile speed controls, transaction precision, enhancement guards, mempool containment, fleet servicing, repair labour, overdrive, Method coverage, speed-resume safety, the exchange trade-ticket flow, network-hash display parity, bad-event impact effects, timed facility-upgrade risk, mining-floor connectivity/power status, the 100-year procedural sandbox continuation, pool fee display, pool shutdown fail-over, the custody transfer slider, Lightning gating, live market pricing, mempool realism, disabled-control tooltips, the single-venue market redesign, Mine-tab scroll stability, full-refurbishment puzzle consistency, the proactive settlement warning, connectivity ping, the unified incoming-fleet pipeline, proportional fleet-health severity colors, rival operators, milestone moments, the end-of-run recap, cross-run career persistence, the dice-entropy wallet-setup ceremony, the era-accurate wallet-software upgrade path, the resetGame() operator-era crash fix, the real mailing-list learning items, the Dashboard build-queue card, hands-on self-servicing before technicians are hired, the fault-clearing/offline-threshold repair fix, the non-blocking faucet popup, tiered spare parts, the historically-grounded custody/region exposure warnings, free self-serviced labour with real self-damage risk, the four hardware self-help skills, staff dismissal the operator XP/level system, dated pool payout schemes, one drawing per machine, and scroll-anchored, frame-aligned repaints");
