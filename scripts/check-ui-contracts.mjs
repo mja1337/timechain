@@ -2226,4 +2226,45 @@ assert(/@media\(max-width:800px\)\{\.topbar-cash\{[^}]*\}\.topbar-cash \.cash-fu
   }
   assert(sawPenalty, "No Energy-tab scenario actually exercised the load penalty above 55% of capacity");
 }
+// PHASE 0. Tutorial layout, simulated paper, a trade amount that survives a repaint, and
+// pre-market bill guidance that does not invent a market or a grace month.
+assert(inline.includes("This is a simulated paper exercise") && inline.includes("Simulate recording and checking") && inline.includes('data-action="wallet-paper-recorded"'), "The paper checkpoint no longer says the exercise is simulated, or it dropped the recording action");
+assert(css.includes("max-width:1000px") && css.includes("var(--tour-card-h") && inline.includes('".hud",".drawer-head"') && inline.includes('addEventListener("resize"'), "The tutorial card is full width only below 800px again, or a resize no longer puts the highlighted control back in view");
+assert(inline.includes("One monthly fee covers every copy in the box.") && inline.includes('/month`:" · free"'), "The bank-box tutorial action no longer shows its fee, or no longer says one fee covers the box");
+assert(inline.includes("const tradeAmountDrafts=new WeakMap()") && inline.includes("tradeAmounts()[key]=amount"), "An exact trade amount is not remembered across a ticket repaint");
+assert(inline.includes("No grace before trading opens") && inline.includes("function billNextAction(x)"), "Pre-market bill guidance can promise a grace month again, or the next-bill card has no next action");
+{
+  const { loadEngine, makeEval } = await import("./engine-harness.mjs");
+  const sb = loadEngine(), ev = makeEval(sb);
+  vm.runInContext(await readFile(new URL("src/ui/presentation.js", root), "utf8"), sb);
+  vm.runInContext(await readFile(new URL("src/ui/tabs/market.js", root), "utf8"), sb);
+  const input = { dataset: { tradeMax: "10", tradeKind: "sell" }, value: "" };
+  const submit = { dataset: {} };
+  sb.document.querySelector = selector => selector.includes("data-trade-input") ? input : submit;
+  ev('refreshTradeAmount("venue-mtgox-sell",1)');
+  assert(ev('tradeAmountControl("venue-mtgox-sell","sell",10,20,"Sell")').includes('value="1.00000000"'), "Repainting the trade ticket loses the exact amount");
+  assert(ev('tradeAmountControl("venue-mtgox-sell","sell",0.5,20,"Sell")').includes('value="0.50000000"'), "A remembered trade amount exceeds the remaining balance");
+  ev("state=initialState()");
+  assert(ev('tradeAmountControl("venue-mtgox-sell","sell",10,20,"Sell")').includes('value="2.50000000"'), "A new run inherits another run's exact trade amount");
+  const billSb = loadEngine(), billEv = makeEval(billSb);
+  vm.runInContext(await readFile(new URL("src/ui/presentation.js", root), "utf8"), billSb);
+  vm.runInContext(await readFile(new URL("src/ui/enhance/operations.js", root), "utf8"), billSb);
+  billEv("state=initialState();state.cash=0");
+  const bill = billEv("settlementForecastVisual()");
+  const detailAt = bill.indexOf("<details");
+  for (const id of ["bill-amount", "bill-due", "bill-cash-after", "bill-next-action"])
+    assert(bill.indexOf(`id="${id}"`) >= 0 && bill.indexOf(`id="${id}"`) < detailAt, `${id} is buried in bill details`);
+  assert(billEv("billNextAction(settlementForecast())").includes('data-value="mine"'), "A pre-market shortfall has no recovery action");
+  billEv("state.cash=100000");
+  assert(billEv("billNextAction(settlementForecast())").includes('data-value="dashboard"'), "A covered bill has no continuation action");
+  billEv("state.cash=0");
+  const early = billEv("settlementOutlookVisual()");
+  assert(early.includes("No grace before trading opens") && !early.includes("Up to one month's grace"), "Pre-market bill guidance promises a grace month");
+  assert(early.includes('data-value="mine"') && !early.includes('data-value="market"'), "A pre-market shortfall sends the player to a market that does not exist");
+  assert(!early.includes("<strong>No market</strong>"), "The market status hides the actual cash shortfall");
+  billEv("state.time=MARKET+DAY");
+  const trading = billEv("settlementOutlookVisual()");
+  assert(billEv("billNextAction(settlementForecast())").includes('data-value="market"'), "A market-era shortfall has no cash recovery action");
+  assert(trading.includes("Up to one month's grace") && trading.includes('data-value="market"'), "After trading opens, bill guidance has lost its market recovery route");
+}
 console.log("UI contracts passed: Mine purchases, difficulty and mobile speed controls, transaction precision, enhancement guards, mempool containment, fleet servicing, repair labour, overdrive, Method coverage, speed-resume safety, the exchange trade-ticket flow, network-hash display parity, bad-event impact effects, timed facility-upgrade risk, mining-floor connectivity/power status, the 100-year procedural sandbox continuation, pool fee display, pool shutdown fail-over, the custody transfer slider, Lightning gating, live market pricing, mempool realism, disabled-control tooltips, the single-venue market redesign, Mine-tab scroll stability, full-refurbishment puzzle consistency, the proactive settlement warning, connectivity ping, the unified incoming-fleet pipeline, proportional fleet-health severity colors, rival operators, milestone moments, the end-of-run recap, cross-run career persistence, the dice-entropy wallet-setup ceremony, the era-accurate wallet-software upgrade path, the resetGame() operator-era crash fix, the real mailing-list learning items, the Dashboard build-queue card, hands-on self-servicing before technicians are hired, the fault-clearing/offline-threshold repair fix, the non-blocking faucet popup, tiered spare parts, the historically-grounded custody/region exposure warnings, free self-serviced labour with real self-damage risk, the four hardware self-help skills, staff dismissal the operator XP/level system, dated pool payout schemes, one drawing per machine, and scroll-anchored, frame-aligned repaints");
