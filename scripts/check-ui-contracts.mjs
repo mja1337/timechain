@@ -2146,7 +2146,8 @@ assert(css.includes(".svg-sprite-defs{position:absolute;width:0;height:0;overflo
     assert(chat.includes('mode.id!=="medium"&&mode.id!=="easy"') && css.includes(".irc-cursor") && css.includes("prefers-reduced-motion:reduce){.irc-cursor"), "The IRC message appears for the wrong starts, or its cursor ignores reduced motion");
   }
   // Emergency stop all is the player's choice and stays: the handler records it, and a paid bill does not undo it.
-  assert(inline.includes('else if(a==="toggle-power")toggleSitePower();') && inline.includes("state.power=!state.power;state.manualStop=!state.power;") && inline.includes("state.power=sitePowerAfterBill();") && inline.includes("function sitePowerAfterBill(){return !state.policyLock&&!state.manualStop}"), "Emergency stop all can be undone by the next monthly bill again");
+  // The click now arms for 4 seconds before it calls the same engine function. The arming state is not saved.
+  assert(inline.includes('else if(a==="toggle-power")requestSitePowerToggle();') && inline.includes("function requestSitePowerToggle()") && inline.includes("powerStopArmedUntil=Date.now()+4000") && inline.includes("toggleSitePower();") && inline.includes("state.power=!state.power;state.manualStop=!state.power;") && inline.includes("state.power=sitePowerAfterBill();") && inline.includes("function sitePowerAfterBill(){return !state.policyLock&&!state.manualStop}"), "Emergency stop all can be undone by the next monthly bill again");
   // The brand is Timechain, the release is Beta, the coin links to the whitepaper, and the storage keys did not move with the name.
   {
     const dash = await readFile(new URL("src/ui/tabs/dashboard.js", root), "utf8");
@@ -2185,6 +2186,61 @@ assert(!inline.includes("24*rate-credit)*month/30.4375") && inline.includes("sit
 // hidden on a phone, so the sticky topbar carries the spendable figure on every tab, refreshed each
 // tick, in fixed-width tabular figures so it cannot jostle the clock and speed controls.
 assert(inline.includes("${topbarCashHtml(forecast)}") && inline.includes("refreshTopbarCash(forecast);"), "The topbar cash readout is not rendered in the header or not refreshed by the live tick");
+// KEY-NUMBERS BAR. The 16-cell ticker is a Stats pop-out that must stay visible at phone width,
+// where .ticker is display:none. The bar itself shows three readings at ≤800px and five above.
+// The shutdown switch is not in the bar. Notification facts from the 3D-map plan stay in the toasts.
+{
+  const hud = await readFile(new URL("src/ui/hud.js", root), "utf8");
+  const dash = await readFile(new URL("src/ui/tabs/dashboard.js", root), "utf8");
+  const markupStart = hud.indexOf("function hudMarkup()");
+  const markupEnd = hud.indexOf("function hudAfterRender()");
+  const markup = hud.slice(markupStart, markupEnd);
+  assert(markupStart > 0 && markupEnd > markupStart, "hudMarkup() could not be isolated");
+  assert(!markup.includes('data-action="toggle-power"') && !markup.includes("Shut miners") && !markup.includes("Emergency stop"), "The key-numbers bar contains the shutdown switch");
+  assert(markup.includes('class="hud-chip hud-stopped"'), "A stopped site no longer shows a status chip on the bar");
+  assert((markup.match(/hud-item hud-primary/g) || []).length === 3 && (markup.match(/hud-item hud-extra/g) || []).length === 2, "The bar must own three primary readings and two that hide at phone width");
+  assert((markup.match(/hudStat\(/g) || []).length + (markup.match(/class="hud-stat"/g) || []).length === 16, "The Stats pop-out must carry all 16 readings");
+  assert(!hud.includes('class="ticker"'), "The Stats pop-out uses .ticker, which display:none hides at ≤800px");
+  const ids = [...hud.matchAll(/\sid="([^"]+)"/g)].map(match => match[1]);
+  assert(new Set(ids).size === ids.length, `hud.js repeats a live id: ${ids.filter((id, i) => ids.indexOf(id) !== i).join(", ")}`);
+  for (const id of ["live-controlled-btc", "live-your-hash", "live-next-bill", "live-runway"]) assert(markup.includes(`mirror("${id}"`), `The Stats pop-out does not mirror ${id}, so the bar and the pop-out would duplicate it`);
+  let cursor = -1;
+  for (const label of ["Self-held BTC", "Your hash rate", "Cash available", "Investments", "Custodial BTC", "Lightning locked", "Net worth", "Power draw", "Next bill", "Cash runway", "BTC / USD", "Network hash rate", "Difficulty", "New BTC / block", "Fees / block", "Transactions"]) {
+    const calls = [markup.indexOf(`hudStat("${label}"`, cursor + 1), markup.indexOf(`<div class="label">${label}</div>`, cursor + 1)].filter(at => at >= 0);
+    const at = calls.length ? Math.min(...calls) : -1;
+    assert(at > cursor, `Stats pop-out lost or reordered ${label}`);
+    cursor = at;
+  }
+  assert(hud.includes('e.key!=="Escape"') && hud.includes("stopImmediatePropagation") && hud.includes("hud-pop-title") && hud.includes(".focus("), "Escape must close a pop-out and return focus");
+  assert(hud.includes("powerStopArmedUntil=Date.now()+4000") && !hud.slice(hud.indexOf("function requestSitePowerToggle()"), hud.indexOf("function sitePowerButtonHtml")).includes("save()"), "Arming the emergency stop is saved, or the 4 second window is gone");
+  assert(inline.includes('hudToggle(a==="hud-stats"?"stats":"decisions")') && inline.includes("if(typeof hudAfterRender===\"function\")hudAfterRender();") && renderSource.includes("Miners stopped") && renderSource.includes(">Restart</button>"), "The pop-outs, focus return or miners-stopped banner is not wired");
+  assert(dash.includes("${hudMarkup()}") && dash.includes('class="xp-meter"') && dash.includes("sitePowerButtonHtml({place:\"dashboard\",small:false})") && inline.includes('sitePowerButtonHtml({place:"floor"})'), "The header no longer draws the bar, the XP meter left the topbar, or a power button lost its place");
+  assert(inline.includes('set("live-hud-yield"') && inline.includes('[data-mirror="${id}"]') && inline.includes(".ticker .tick, .hud-stat"), "Live updates miss the new yield, the pop-out mirrors, or the offline mask");
+  assert(css.includes(".hud-stats-grid{display:grid") && css.includes(".hud-pop[hidden]{display:none!important}") && css.includes(".hud-item.hud-extra{display:none}") && css.includes(".hud-data{overflow:hidden"), "Phone bar still scrolls sideways, or a closed pop-out stays on screen");
+  assert(css.includes("top:calc(var(--topbar-h) + var(--hud-h, 0px))") && css.includes("top:calc(var(--topbar-live-h) + var(--hud-h, 0px))"), "The tab row no longer sits below the key-numbers bar");
+  assert(!css.includes("body.tour-on .toast{bottom:auto;top:80px}") && css.includes("body.tour-on .toast{top:auto;bottom:calc(var(--tour-card-h"), "A tutorial toast still covers the key-numbers bar");
+  assert(css.includes("body.is-offline .hud-stat.offline-masked"), "Offline dimming does not reach the Stats pop-out");
+  assert(inline.includes("The key-numbers bar adapts work by James Browning."), "The Method page no longer credits the key-numbers bar");
+  const facts = [
+    ["src/engine/actions.js", "The site will rack what it has room for and hold the rest in storage."],
+    ["src/engine/actions.js", "of cooling plant were sold with the old site"],
+    ["src/engine/actions.js", "ETA ${dateFmt(state.facilityUpgradeJob.due)}"],
+    ["src/engine/actions.js", "power, rent, connectivity, staff and node costs"],
+    ["src/engine/actions.js", "Modelled market impact reduced the proceeds by"],
+    ["src/engine/keyholders.js", "Record the wallet configuration again"],
+    ["src/engine/keyholders.js", "A change in employment cannot erase a secret someone has learned."],
+    ["src/engine/keyholders.js", "a former employee is an insider risk"],
+    ["src/engine/signing.js", "The coins are in flight until this finishes; leave time before a bill falls due."],
+    ["src/engine/custody.js", "Generate or restore a key, then check the wallet policy and recovery plan."],
+    ["src/engine/settlement.js", "Bill missed, grid still on"],
+    ["src/engine/settlement.js", "fmtUsd(carried)"] ,
+    ["src/engine/settlement.js", "dateFmt(state.arrearsDue)"]
+  ];
+  for (const [file, phrase] of facts) {
+    const source = await readFile(new URL(file, root), "utf8");
+    assert(source.includes(phrase), `A notification fact is gone from ${file}: ${phrase}`);
+  }
+}
 assert(inline.includes('id="topbar-cash-full" class="cash-full">${fmtUsd(state.cash)}') && inline.includes('id="topbar-cash-compact" class="cash-compact">${fmtCompactUsd(state.cash)}'), "The topbar cash readout must show state.cash - the only money purchases and bills draw on - and nothing added to it");
 assert(/\.topbar-cash strong\{[^}]*font-variant-numeric:tabular-nums[^}]*min-width:11ch/.test(css) && /\.topbar-cash\{[^}]*width:152px/.test(css), "The topbar cash figure has lost its tabular, fixed-width box, so a ticking number will shift the topbar");
 assert(/@media\(max-width:800px\)\{\.topbar-cash\{[^}]*\}\.topbar-cash \.cash-full,\.topbar-cash small\{display:none\}\.topbar-cash \.cash-compact\{display:inline\}/.test(css), "On a phone the topbar cash readout must switch to the compact figure");
@@ -2225,5 +2281,48 @@ assert(/@media\(max-width:800px\)\{\.topbar-cash\{[^}]*\}\.topbar-cash \.cash-fu
     if (load > .55) { sawPenalty = true; assert(factor > 1, `A site at ${(load * 100).toFixed(0)}% of capacity should pay a load penalty above 1×`); }
   }
   assert(sawPenalty, "No Energy-tab scenario actually exercised the load penalty above 55% of capacity");
+}
+// Tutorial consolidation. Yesterday's hands-on steps, never-stuck rules and dice
+// ceremony stay. James's notes tighten the sentences and make the paper step
+// explicitly simulated. The reasons stay on the card, and the facts stay with them.
+assert(inline.includes("No real paper is needed") && inline.includes("Paper can carry authority") && inline.includes("Simulate recording and checking") && inline.includes('data-action="wallet-paper-recorded"') && inline.includes("Never destroy your only tested backup."), "The paper checkpoint must say the exercise is simulated and still teach that a record can carry the key");
+assert(inline.includes("points at the button that does it") && inline.includes("NEVER STUCK") && inline.includes("Press and hold the die to shake it") && inline.includes("or the other place, if you prefer") && inline.includes("Anyone who reads that paper can spend with it") && inline.includes("very small chance they help themselves") && inline.includes("The Dashboard briefing says what to do next") && !inline.includes("<summary>Why this step matters</summary>"), "The afternoon tutorial mechanics or a step's reason has been replaced");
+assert(css.includes("max-width:1000px") && css.includes("var(--tour-card-h") && inline.includes('".hud",".drawer-head"') && inline.includes('addEventListener("resize"'), "The tutorial card is full width only below 800px again, or a resize no longer puts the highlighted control back in view");
+assert(inline.includes("One monthly fee covers every copy in the box.") && inline.includes('/month`:" · free"'), "The bank-box tutorial action no longer shows its fee, or no longer says one fee covers the box");
+assert(inline.includes("const tradeAmountDrafts=new WeakMap()") && inline.includes("tradeAmounts()[key]=amount"), "An exact trade amount is not remembered across a ticket repaint");
+assert(inline.includes("No grace before trading opens") && inline.includes("function billNextAction(x)"), "Pre-market bill guidance can promise a grace month again, or the next-bill card has no next action");
+{
+  const { loadEngine, makeEval } = await import("./engine-harness.mjs");
+  const sb = loadEngine(), ev = makeEval(sb);
+  vm.runInContext(await readFile(new URL("src/ui/presentation.js", root), "utf8"), sb);
+  vm.runInContext(await readFile(new URL("src/ui/tabs/market.js", root), "utf8"), sb);
+  const input = { dataset: { tradeMax: "10", tradeKind: "sell" }, value: "" };
+  const submit = { dataset: {} };
+  sb.document.querySelector = selector => selector.includes("data-trade-input") ? input : submit;
+  ev('refreshTradeAmount("venue-mtgox-sell",1)');
+  assert(ev('tradeAmountControl("venue-mtgox-sell","sell",10,20,"Sell")').includes('value="1.00000000"'), "Repainting the trade ticket loses the exact amount");
+  assert(ev('tradeAmountControl("venue-mtgox-sell","sell",0.5,20,"Sell")').includes('value="0.50000000"'), "A remembered trade amount exceeds the remaining balance");
+  ev("state=initialState()");
+  assert(ev('tradeAmountControl("venue-mtgox-sell","sell",10,20,"Sell")').includes('value="2.50000000"'), "A new run inherits another run's exact trade amount");
+  const billSb = loadEngine(), billEv = makeEval(billSb);
+  vm.runInContext(await readFile(new URL("src/ui/presentation.js", root), "utf8"), billSb);
+  vm.runInContext(await readFile(new URL("src/ui/enhance/operations.js", root), "utf8"), billSb);
+  billEv("state=initialState();state.cash=0");
+  const bill = billEv("settlementForecastVisual()");
+  const detailAt = bill.indexOf("<details");
+  for (const id of ["bill-amount", "bill-due", "bill-cash-after", "bill-next-action"])
+    assert(bill.indexOf(`id="${id}"`) >= 0 && bill.indexOf(`id="${id}"`) < detailAt, `${id} is buried in bill details`);
+  assert(billEv("billNextAction(settlementForecast())").includes('data-value="mine"'), "A pre-market shortfall has no recovery action");
+  billEv("state.cash=100000");
+  assert(billEv("billNextAction(settlementForecast())").includes('data-value="dashboard"'), "A covered bill has no continuation action");
+  billEv("state.cash=0");
+  const early = billEv("settlementOutlookVisual()");
+  assert(early.includes("No grace before trading opens") && !early.includes("Up to one month's grace"), "Pre-market bill guidance promises a grace month");
+  assert(early.includes('data-value="mine"') && !early.includes('data-value="market"'), "A pre-market shortfall sends the player to a market that does not exist");
+  assert(!early.includes("<strong>No market</strong>"), "The market status hides the actual cash shortfall");
+  billEv("state.time=MARKET+DAY");
+  const trading = billEv("settlementOutlookVisual()");
+  assert(billEv("billNextAction(settlementForecast())").includes('data-value="market"'), "A market-era shortfall has no cash recovery action");
+  assert(trading.includes("Up to one month's grace") && trading.includes('data-value="market"'), "After trading opens, bill guidance has lost its market recovery route");
 }
 console.log("UI contracts passed: Mine purchases, difficulty and mobile speed controls, transaction precision, enhancement guards, mempool containment, fleet servicing, repair labour, overdrive, Method coverage, speed-resume safety, the exchange trade-ticket flow, network-hash display parity, bad-event impact effects, timed facility-upgrade risk, mining-floor connectivity/power status, the 100-year procedural sandbox continuation, pool fee display, pool shutdown fail-over, the custody transfer slider, Lightning gating, live market pricing, mempool realism, disabled-control tooltips, the single-venue market redesign, Mine-tab scroll stability, full-refurbishment puzzle consistency, the proactive settlement warning, connectivity ping, the unified incoming-fleet pipeline, proportional fleet-health severity colors, rival operators, milestone moments, the end-of-run recap, cross-run career persistence, the dice-entropy wallet-setup ceremony, the era-accurate wallet-software upgrade path, the resetGame() operator-era crash fix, the real mailing-list learning items, the Dashboard build-queue card, hands-on self-servicing before technicians are hired, the fault-clearing/offline-threshold repair fix, the non-blocking faucet popup, tiered spare parts, the historically-grounded custody/region exposure warnings, free self-serviced labour with real self-damage risk, the four hardware self-help skills, staff dismissal the operator XP/level system, dated pool payout schemes, one drawing per machine, and scroll-anchored, frame-aligned repaints");

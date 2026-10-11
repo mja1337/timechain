@@ -61,6 +61,8 @@ const expectedScripts = [
   "src/ui/art.js",
   "src/ui/disaster-art.js",
   "src/ui/topbar-cash.js",
+  /* Before dashboard.js: renderHeader() draws the key-numbers bar from here. */
+  "src/ui/hud.js",
   "src/ui/tabs/dashboard.js",
   "src/ui/tabs/pools.js",
   "src/ui/tabs/mine.js",

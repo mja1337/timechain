@@ -9,8 +9,9 @@
    uncaught exception, failed request, or a tab that does not draw.
 
    Nothing is hard-coded: the tab list is read from nav() and tabContent(), the sections from
-   TREASURY_SECTIONS and MINE_SECTIONS, and the drawers from every action in events.js that opens
-   a `...Open` flag. A new tab or drawer is covered without editing this file.
+   TREASURY_SECTIONS and MINE_SECTIONS, the drawers from every action in events.js that opens
+   a `...Open` flag, and pop-outs from header buttons that name a region with aria-controls
+   (Stats and Decisions). A new tab, drawer or pop-out is covered without editing this file.
 
    Needs Playwright (`npm install --no-save playwright`). Uses Chrome at CHROME_PATH, or
    /usr/bin/google-chrome when present, or Playwright's own Chromium. Locally, point
@@ -37,6 +38,13 @@ const treasurySections = sectionsOf(treasuryJs, "TREASURY_SECTIONS");
 const mineSections = sectionsOf(mineJs, "MINE_SECTIONS");
 const drawers = [...new Map([...eventsJs.matchAll(/a==="([\w-]+)"\)\{(\w+Open)=(?:true|!\2)\b/g)].map(m => [m[1], m[2]])).entries()]
   .map(([action, flag]) => ({ action, flag }));
+let hudJs = "";
+try { hudJs = await src("src/ui/hud.js"); } catch { hudJs = ""; }
+const pops = [...new Map([...hudJs.matchAll(/data-action="([\w-]+)"[\s\S]{0,400}?aria-controls="([\w-]+)"/g)].map(m => [m[1], { action: m[1], region: m[2] }])).values()]
+  .filter(p => hudJs.includes(`id="${p.region}"`));
+const controlled = [...new Set([...hudJs.matchAll(/aria-controls="([\w-]+)"/g)].map(m => m[1]))];
+if (controlled.length !== pops.length) fail(`hud.js names ${controlled.length} aria-controls regions but ${pops.length} pair with a data-action button`);
+for (const p of pops) if (!eventsJs.includes(`"${p.action}"`)) fail(`The ${p.action} pop-out has a button, but events.js never handles that action`);
 const tabs = [...new Set([...navList, ...contentTabs, ...(fallbackTab ? [fallbackTab] : [])])];
 if (navList.length < 5) fail(`Could not read the tab list from nav(): ${JSON.stringify(navList)}`);
 if (contentTabs.length < 5) fail(`Could not read the tabs tabContent() draws: ${JSON.stringify(contentTabs)}`);
@@ -75,6 +83,7 @@ const BASE = `http://127.0.0.1:${server.address().port}/`;
 const browser = await chromium.launch(executablePath ? { executablePath } : {});
 let opened = 0;
 const drawersOpened = new Set();
+const popsOpened = new Set();
 try {
   for (const [W, H] of [[1280, 800], [390, 844]]) {
     const size = `${W}x${H}`;
@@ -144,10 +153,26 @@ try {
         opened++;
         await act(flags => { flags.forEach(f => (0, eval)(`${f}=false`)); render(false); }, drawers.map(x => x.flag));
       }
+      for (const p of pops) {
+        where = `${size} ${fx} pop ${p.action}`;
+        if (!(await click(`[data-action="${p.action}"]`))) fail(`${where}: the header has no ${p.action} button`);
+        const shown = await page.evaluate(id => {
+          const el = document.getElementById(id);
+          const text = (el?.textContent || "").replace(/\s+/g, " ").trim();
+          return { open: !!el && !el.hidden && !el.hasAttribute("hidden"), len: text.length };
+        }, p.region);
+        if (!shown.open || shown.len < 40) fail(`${where}: ${p.region} did not open with content`);
+        popsOpened.add(p.action);
+        opened++;
+        if (!(await click(`[data-action="${p.action}"]`))) fail(`${where}: the ${p.action} button disappeared while its pop-out was open`);
+        const closed = await page.evaluate(id => { const el = document.getElementById(id); return !!el && (el.hidden || el.hasAttribute("hidden")); }, p.region);
+        if (!closed) fail(`${where}: clicking ${p.action} again left ${p.region} open`);
+      }
     }
     await ctx.close();
   }
   for (const d of drawers) if (!drawersOpened.has(d.action)) fail(`The ${d.action} drawer was never offered at either size, so it was never opened`);
+  for (const p of pops) if (!popsOpened.has(p.action)) fail(`The ${p.action} pop-out was never opened`);
 } finally {
   await browser.close();
   server.close();
@@ -158,4 +183,4 @@ if (failures.length) {
   console.error(`Every-tab check FAILED (${unique.length} problem${unique.length === 1 ? "" : "s"}):\n  ${unique.slice(0, 40).join("\n  ")}`);
   process.exit(1);
 }
-console.log(`Every tab: ${tabs.length} tabs (${tabs.join(", ")}), ${treasurySections.length + mineSections.length} sections and ${drawers.length} drawers across 4 fixtures at 1280x800 and 390x844: ${opened} screens opened, 0 console errors, 0 uncaught exceptions.`);
+console.log(`Every tab: ${tabs.length} tabs (${tabs.join(", ")}), ${treasurySections.length + mineSections.length} sections, ${drawers.length} drawers and ${pops.length} pop-outs (${pops.map(p => p.action).join(", ") || "none"}) across 4 fixtures at 1280x800 and 390x844: ${opened} screens opened, 0 console errors, 0 uncaught exceptions.`);
