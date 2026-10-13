@@ -97,8 +97,12 @@ function hotItemDays(item){
 function hotRestorePlan(key){
   if(key.passphrase&&!hotPassRestorable(key))return null;
   const seeds=[];
-  if(custodyKeyRestorable(key))seeds.push({via:"backup",days:Math.max(0,custodyRestoreDays(key)),place:key.backup.place});
+  if(custodyKeyRestorable(key)&&key.backup&&!key.backup.destroyed)seeds.push({via:"backup",days:Math.max(0,custodyRestoreDays(key)),place:key.backup.place});
   if(hotSheetRestorable(key))seeds.push({via:"sheet",days:Math.max(0,hotItemDays(key.diceSheet)),place:key.diceSheet.place});
+  if(typeof keySharesRestorable==="function"&&keySharesRestorable(key)){
+    const shares=liveShares(key),days=Math.max(0,...shares.map(sh=>hotItemDays(sh)));
+    seeds.push({via:"shares",days,place:shares[0]&&shares[0].place});
+  }
   if(!seeds.length)return null;
   seeds.sort((a,b)=>a.days-b.days);
   const seed=seeds[0];

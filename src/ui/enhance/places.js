@@ -44,6 +44,9 @@ function placeContents(placeId){
   (c.keys||[]).filter(k=>k.passphraseBackup&&!k.passphraseBackup.destroyed&&k.passphraseBackup.place&&custodyPlaceId(k.passphraseBackup.place)===placeId).forEach(k=>{
     rows.push(placeItemRow("passphrase",k.id,`${k.label} passphrase slip`,"paper: the seed cannot spend without it, and it cannot spend without the seed",k.passphraseBackup.place));
   });
+  (c.keys||[]).forEach(k=>{(Array.isArray(k.shares)?k.shares:[]).filter(sh=>sh&&!sh.destroyed&&sh.place&&custodyPlaceId(sh.place)===placeId).forEach(sh=>{
+    rows.push(placeItemRow("share",`${k.id}:${sh.index}`,`${k.label} share ${sh.index}/${sh.total}`,`${sh.threshold}-of-${sh.total}: not BIP39 words`,sh.place));
+  })});
   if(c.configBackedUp)custodyConfigLocations(c).forEach(p=>{if(p&&custodyPlaceId(p)===placeId)rows.push(placeConfigRow(p))});
   return rows.join("");
 }

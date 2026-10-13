@@ -346,6 +346,7 @@ function assignCustodyKey(keyId){
   if(!key)return;
   if(key.retired)return showToast("That key is retired","It was replaced because somebody else may know it. Putting it back would undo the rotation.","bad","custody");
   if(key.hot)return showToast("That is your online wallet","The key behind your online wallet lives on the mining computer. A wallet policy needs keys on signers of their own.","bad","custody");
+  if(key.company)return showToast("That is the company key","It is assigned by choosing a collaborative arrangement, not by hand.","bad","custody");
   if(c.assigned.includes(keyId))return;
   if(c.assigned.length>=policy.keys)return showToast("Wallet is full",`${policy.name} takes ${policy.keys} key${policy.keys===1?"":"s"}.`);
   const seeds=custodyAssignedKeys().map(k=>k.seed);

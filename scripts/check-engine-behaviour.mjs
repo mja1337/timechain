@@ -4925,6 +4925,48 @@ rule("campaign letters follow reached conditions once and respect mining eras", 
   const again=makeEval(loadEngine(stored));again("updateCorrespondence()");
   assert(again('state.correspondence.filter(m=>m.kind==="story").length')===4,"campaign archive did not survive reload intact");
 });
+
+rule("Shamir shares restore a key and fire below threshold does not expose it", () => {
+  const read=makeEval(loadEngine());
+  read(`
+    state.skills.push("multisig");state.facility="warehouse";
+    state.custody=blankCustody();
+    state.custody.keys=[{id:"k1",label:"ASH",seed:"s1",backup:{product:"paperbackup",durability:"paper",place:"home"},bornOn:state.time}];
+    splitKeyIntoShares("k1");
+  `);
+  assert(read("keySharesRestorable(custodyKey('k1'))")===true,"fresh 2-of-3 shares should restore");
+  assert(read("!custodyKey('k1').backup||custodyKey('k1').backup.destroyed")===true,"splitting should retire the single backup");
+  read(`applyPlaceIncidentBase("home","fire",state.time,true);`);
+  assert(read("liveShares(custodyKey('k1')).length")===2,"fire at home should destroy one share and leave two");
+  assert(read("keySharesRestorable(custodyKey('k1'))")===true,"two of three shares still restore");
+  assert(read("!custodyKey('k1').exposed")===true,"one destroyed share must not expose the key");
+});
+rule("collaborative arrangement adds a company key that can go offline", () => {
+  const read=makeEval(loadEngine());
+  read(`
+    state.skills.push("multisig");state.cash=1000;state.custody=blankCustody();state.custody.policy="2of3";
+    state.custody.keys=[
+      {id:"k1",label:"ASH",seed:"s1",backup:{product:"paperbackup",durability:"steel",place:"bank"},bornOn:state.time},
+      {id:"k2",label:"BIRCH",seed:"s2",backup:{product:"paperbackup",durability:"steel",place:"trusted"},bornOn:state.time}
+    ];
+    state.custody.assigned=["k1","k2"];
+    setCollaborativeArrangement("casa-standard");
+  `);
+  assert(read("state.custody.arrangement")==="casa-standard","Casa-shaped arrangement was not recorded");
+  assert(read("!!companyKey()&&state.custody.assigned.includes(companyKey().id)")===true,"company key missing from the quorum");
+  assert(read("companyCanSign()")===true,"paid Casa-shaped key should sign");
+  read(`state.custody.companyOutageUntil=state.time+3*DAY;`);
+  assert(read("companyCanSign()")===false,"outage must block the company key");
+  assert(read("custodyKeyLive(companyKey())")===false,"outage must make the company key not live");
+  read(`setCollaborativeArrangement("diy");`);
+  assert(read("state.custody.arrangement")==="diy"&&read("(state.custody.keys||[]).some(k=>k.company&&k.retired)")===true,"DIY should retire the company key");
+});
+rule("disaster drill is read-only", () => {
+  const read=makeEval(loadEngine());
+  const before=read(`(()=>{state.custody=blankCustody();state.custody.devices=[{uid:"d1",product:"beigepc",place:"site"}];return JSON.stringify(state.custody)})()`);
+  read(`custodyDisasterDrill("site","fire");`);
+  assert(read("JSON.stringify(state.custody)")===before,"drill mutated custody state");
+});
 process.on("exit", () => {
   if (failures.length) {
     console.error(`Engine behaviour: ${failures.length} of ${checked} rules failed\n`);

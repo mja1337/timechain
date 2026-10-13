@@ -84,4 +84,5 @@ function enhanceKeys(){
   const grid=document.querySelector(".content .grid");if(!grid)return;
   if(grid.querySelector(".key-workbench"))return;
   grid.insertAdjacentHTML("beforeend",`${typeof hotWalletCard==="function"?hotWalletCard():""}${custodyWorkshopCard()}${custodyReadinessCard()}${custodyDevicesCard()}${custodyPlacesCard()}${custodyCounterpartiesCard()}${custodyShopCard()}`);
+  if(typeof enhanceCustodyEducation==="function")enhanceCustodyEducation();
 }
