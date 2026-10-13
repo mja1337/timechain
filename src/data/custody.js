@@ -173,7 +173,12 @@ function normalizeCustodyPlaces(c){
     for(const field of ["backup","diceSheet","passphraseBackup"]){
       const item=k[field];if(item&&typeof item==="object"&&item.place!==undefined&&!ok(item.place))delete item.place;
     }
+    if(Array.isArray(k.shares)){
+      k.shares=k.shares.filter(sh=>sh&&typeof sh==="object");
+      k.shares.forEach(sh=>{if(sh.place!==undefined&&!ok(sh.place))delete sh.place});
+    }
   });
+  if(c.arrangement&&!["diy","casa-standard","unchained-vault"].includes(c.arrangement))delete c.arrangement;
   if(c.configPlace!==undefined&&!ok(c.configPlace))delete c.configPlace;
   c.configCopies=(Array.isArray(c.configCopies)?c.configCopies:[]).filter(p=>ok(p)&&p!=="transit");
   c.moves=(Array.isArray(c.moves)?c.moves:[]).filter(m=>m&&ok(m.to)&&m.to!=="transit"&&Number.isFinite(Number(m.due))&&typeof m.kind==="string");
@@ -187,6 +192,9 @@ function normalizeCustodyPlaces(c){
     if(k.backup&&k.backup.place==="transit"&&!travelling("backup",k.id))k.backup.place="site";
     if(k.diceSheet&&k.diceSheet.place==="transit"&&!travelling("dicesheet",k.id))k.diceSheet.place="site";
     if(k.passphraseBackup&&k.passphraseBackup.place==="transit"&&!travelling("passphrase",k.id))k.passphraseBackup.place="site";
+    (Array.isArray(k.shares)?k.shares:[]).forEach(sh=>{
+      if(sh.place==="transit"&&!travelling("share",`${k.id}:${sh.index}`))sh.place="site";
+    });
   });
   if(c.configPlace==="transit")c.configPlace="site";
   return c;

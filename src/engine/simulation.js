@@ -394,6 +394,7 @@ function advanceOperationalRisks(next,silent=false){
   const month=new Date(next).toISOString().slice(0,7);if(state.ops.riskMonth===month)return;state.ops.riskMonth=month;
   advanceCustodyRisks(next,silent);
   advancePlaceRisks(next,silent);
+  if(typeof advanceCompanyRisks==="function")advanceCompanyRisks(next,silent);
   if(typeof advanceHotKeyRisk==="function")advanceHotKeyRisk(next,silent);
   advanceCoinCover(next,silent);
   advanceHotWalletRisk();
