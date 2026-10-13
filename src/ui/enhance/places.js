@@ -38,6 +38,12 @@ function placeContents(placeId){
   (c.keys||[]).filter(k=>k.backup&&!k.backup.destroyed&&k.backup.place&&custodyPlaceId(k.backup.place)===placeId).forEach(k=>{
     rows.push(placeItemRow("backup",k.id,`${k.label} seed backup`,k.backup.durability==="steel"?"steel: survives fire and flood":"paper: destroyed by fire and flood",k.backup.place));
   });
+  (c.keys||[]).filter(k=>k.diceSheet&&!k.diceSheet.destroyed&&k.diceSheet.place&&custodyPlaceId(k.diceSheet.place)===placeId).forEach(k=>{
+    rows.push(placeItemRow("dicesheet",k.id,`${k.label} roll sheet`,"paper: can rebuild the online wallet, and anyone who finds it can copy the key",k.diceSheet.place));
+  });
+  (c.keys||[]).filter(k=>k.passphraseBackup&&!k.passphraseBackup.destroyed&&k.passphraseBackup.place&&custodyPlaceId(k.passphraseBackup.place)===placeId).forEach(k=>{
+    rows.push(placeItemRow("passphrase",k.id,`${k.label} passphrase slip`,"paper: the seed cannot spend without it, and it cannot spend without the seed",k.passphraseBackup.place));
+  });
   if(c.configBackedUp)custodyConfigLocations(c).forEach(p=>{if(p&&custodyPlaceId(p)===placeId)rows.push(placeConfigRow(p))});
   return rows.join("");
 }
@@ -45,6 +51,8 @@ function placeUnrecorded(){
   const c=state.custody,rows=[];
   (c.devices||[]).filter(d=>!d.destroyed&&!d.place).forEach(d=>rows.push(placeItemRow("device",d.uid,custodyProduct(d.product)?.name||"Signer","no place recorded",undefined)));
   (c.keys||[]).filter(k=>k.backup&&!k.backup.destroyed&&!k.backup.place).forEach(k=>rows.push(placeItemRow("backup",k.id,`${k.label} seed backup`,"no place recorded",undefined)));
+  (c.keys||[]).filter(k=>k.diceSheet&&!k.diceSheet.destroyed&&!k.diceSheet.place).forEach(k=>rows.push(placeItemRow("dicesheet",k.id,`${k.label} roll sheet`,"no place recorded",undefined)));
+  (c.keys||[]).filter(k=>k.passphraseBackup&&!k.passphraseBackup.destroyed&&!k.passphraseBackup.place).forEach(k=>rows.push(placeItemRow("passphrase",k.id,`${k.label} passphrase slip`,"no place recorded",undefined)));
   if(c.configBackedUp&&!c.configPlace)rows.push(placeConfigRow(undefined));
   return rows.join("");
 }

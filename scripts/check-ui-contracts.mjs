@@ -396,8 +396,10 @@ assert(inline.includes("state.walletSetup&&state.walletSetup.required&&!state.wa
   const versions = [...inline.matchAll(/title:"(Alpha|Beta) (\d+)\.(\d+) /g)].map(m => (m[1] === "Beta" ? 1_000_000 : 0) + Number(m[2]) * 1000 + Number(m[3]));
   assert(versions.every((v, i) => i === 0 || versions[i - 1] >= v), "The changelog is out of order: versions must not increase as you read down");
 }
-assert(inline.includes("createHotWallet({keyHex:state.walletSetup.keyHex,backup:!!withBackup})") && inline.includes('else if(a==="wallet-setup-done")completeWalletSetup(v==="backup");') && inline.includes('data-action="wallet-setup-done" data-value="backup"'),
+assert(inline.includes("createHotWallet({keyHex:state.walletSetup.keyHex,backup:!!withBackup,diceSheet:!!state.walletSetup.paperKept,passphrase:!!state.walletSetup.passphrase,passphrasePlace:state.walletSetup.passphrasePlace})") && inline.includes('else if(a==="wallet-setup-done")completeWalletSetup(v==="backup");') && inline.includes('data-action="wallet-setup-done" data-value="backup"'),
   "The ceremony's key is no longer made into a real key, or the player is no longer offered a backup of it");
+assert(inline.includes("wallet-paper-kept") && inline.includes("Keep the sheet.") && inline.includes("Destroy the sheet.") && inline.includes("wallet-passphrase-skip") && inline.includes("wallet-passphrase-place") && inline.includes("25th word") && inline.includes("Never destroy your only tested backup."),
+  "The ceremony no longer teaches the roll-sheet choice or the passphrase slip");
 assert(/function skipWalletSetup\(\)\{[\s\S]*?state\.walletSetup\.step=2;save\(\);render\(\);\s*\}/.test(inline),
   "Letting the game generate the key skips the page that shows it and offers the backup");
 assert(inline.includes('typeof hotWalletCard==="function"?hotWalletCard():""') && inline.includes("function hotWalletCard()") && inline.includes('if(key.hot)return showToast("That is your online wallet"'),
@@ -460,7 +462,7 @@ assert(inline.includes('typeof hotWalletCard==="function"?hotWalletCard():""') &
   vm.runInContext(tourSource, sb);
   ev(`state=initialState();state.started=true;state.cash=2500;state.campaignStart=state.time;state.lastMonth=new Date(state.time).toISOString().slice(0,7);
       state.walletSetup={done:false,step:0,rolls:[],keyHex:"",required:true,resumeSpeed:1};
-      skipWalletSetup();recordWalletPaper();destroyWalletPaper();takeWalletOath();`);
+      skipWalletSetup();recordWalletPaper();destroyWalletPaper();declineWalletPassphrase();takeWalletOath();`);
   const step = () => ev("tourStep().id");
   assert(ev("tourActive()") && step() === "welcome" && ev("state.speed") === 0 && ev("state.tour.resumeSpeed") === 1, "A new run's tutorial does not start on the welcome card with the clock held");
   ev(`tourAction("tour-next")`);
@@ -498,7 +500,7 @@ assert(inline.includes('typeof hotWalletCard==="function"?hotWalletCard():""') &
   // NEVER STUCK. Each blocker the tutorial can meet, played once by name; then thousands of randomly interfered runs.
   const freshRun = (cash = 2500) => ev(`state=initialState();state.started=true;state.cash=${cash};state.campaignStart=state.time;state.lastMonth=new Date(state.time).toISOString().slice(0,7);
       state.walletSetup={done:false,step:0,rolls:[],keyHex:"",required:true,resumeSpeed:1};
-      skipWalletSetup();recordWalletPaper();destroyWalletPaper();takeWalletOath();tourAction("tour-next");`);
+      skipWalletSetup();recordWalletPaper();destroyWalletPaper();declineWalletPassphrase();takeWalletOath();tourAction("tour-next");`);
   const act = () => JSON.parse(ev(`JSON.stringify((a=>a?{label:a.label||"",wait:!!a.wait}:null)(tourNextAction()))`));
   const doIt = () => ev(`tourAction("tour-do");tourCheck();`);
   const deliver = `for(let i=0;i<40&&state.custody.orders.length;i++){tourCheck();tick(true)}tourCheck();`;

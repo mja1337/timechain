@@ -393,11 +393,25 @@ function recordWalletPaper(){
 }
 function destroyWalletPaper(){
   if(state.walletSetup.step!==2||!state.walletSetup.paperRecorded)return;
-  state.walletSetup.paperDestroyed=true;state.walletSetup.step=3;save();render();
+  state.walletSetup.paperDestroyed=true;state.walletSetup.paperKept=false;state.walletSetup.step=4;save();render();
+}
+function keepWalletPaper(){
+  if(state.walletSetup.step!==2||!state.walletSetup.paperRecorded)return;
+  state.walletSetup.paperKept=true;state.walletSetup.paperDestroyed=false;state.walletSetup.step=4;save();render();
+}
+/* No typed secret. A passphrase the player uses for real bitcoin must not enter this browser. */
+function declineWalletPassphrase(){
+  if(state.walletSetup.step!==4)return;
+  state.walletSetup.passphrase=false;delete state.walletSetup.passphrasePlace;state.walletSetup.step=3;save();render();
+}
+function placeWalletPassphrase(place){
+  if(state.walletSetup.step!==4||!["home","bank","trusted"].includes(place))return;
+  state.walletSetup.passphrase=true;state.walletSetup.passphrasePlace=place;state.walletSetup.step=3;save();render();
 }
 function takeWalletOath(){
-  if(state.walletSetup.step!==3||!state.walletSetup.paperDestroyed)return;
-  state.walletSetup.oath=true;completeWalletSetup(false);
+  const w=state.walletSetup;
+  if(w.step!==3||!(w.paperDestroyed||w.paperKept))return;
+  w.oath=true;completeWalletSetup(false);
 }
 function skipWalletSetup(){
   if(state.walletSetup.done)return;
@@ -412,7 +426,7 @@ function completeWalletSetup(withBackup=false){
   const tier=walletSoftwareTierAt(state.campaignStart);
   if(!state.walletSetup.demo)state.walletSoftware=tier;state.walletSetup.done=true;
   // The key the ceremony made is a real key: the one behind the online wallet.
-  if(!state.walletSetup.demo&&typeof createHotWallet==="function")createHotWallet({keyHex:state.walletSetup.keyHex,backup:!!withBackup});
+  if(!state.walletSetup.demo&&typeof createHotWallet==="function")createHotWallet({keyHex:state.walletSetup.keyHex,backup:!!withBackup,diceSheet:!!state.walletSetup.paperKept,passphrase:!!state.walletSetup.passphrase,passphrasePlace:state.walletSetup.passphrasePlace});
   if(!state.walletSetup.demo)log("Game wallet ready",`Installed ${WALLET_SOFTWARE[tier].name} · illustrative keys only`,"custody");
   state.speed=state.walletSetup.demo?(state.walletSetup.resumeSpeed||0):(typeof state.walletSetup.resumeSpeed==="number"?state.walletSetup.resumeSpeed:1);save();setTimer();render();
   // A new run is walked round the game before it starts, with the clock held; the speed it would have had comes back at the end.

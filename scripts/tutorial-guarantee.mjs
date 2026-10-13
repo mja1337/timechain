@@ -120,7 +120,7 @@ export function runTutorialGuarantee({ tourSource, treasurySource, seedsPerCase 
     ev(`state=initialState();OPERATOR_ERAS.forEach(era=>state.operator.eras[era.id]={months:0,solvent:0,profitable:0,uptime:0,competitive:0});state.started=true;state.seed=state.rng=${1 + Math.floor(rng() * 2147483646)};state.cash=${cash};state.time=at(${JSON.stringify(day)});state.sandbox=${sandbox};
         state.campaignStart=state.time;state.lastMonth=new Date(state.time).toISOString().slice(0,7);
         state.walletSetup={done:false,step:0,rolls:[],keyHex:"",required:true,resumeSpeed:1};
-        skipWalletSetup();recordWalletPaper();destroyWalletPaper();takeWalletOath();`);
+        skipWalletSetup();recordWalletPaper();destroyWalletPaper();declineWalletPassphrase();takeWalletOath();`);
     if (!replay) return true;
     // An established save: skip the tutorial, play about a little, then replay it from the footer with whatever cash is left.
     ev(`tourAction("tour-skip")`);

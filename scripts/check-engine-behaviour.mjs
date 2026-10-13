@@ -4603,6 +4603,34 @@ rule("the first wallet's key never comes from the run's seed", () => {
   assert(JSON.parse(read("JSON.stringify(secureDice(5))")).length === 5, "secureDice returned the wrong number of rolls");
 });
 
+rule("a kept roll sheet can rebuild the online wallet, and a passphrase slip is a separate thing a thief has to take", () => {
+  const read = makeEval(loadEngine());
+  const boot = () => read(`state=initialState();state.started=true;state.seed=11;state.rng=11;state.cash=5000;state.wallets.hot=1;state.wallets.cold=0;state.campaignStart=state.time-61*86400000;`);
+  boot();
+  const rng = read("state.rng");
+  read(`state.walletSetup={done:false,step:2,rolls:[1,2,3,4,5,6,1,2],keyHex:"abcd",paperRecorded:true,required:true,resumeSpeed:1};keepWalletPaper();declineWalletPassphrase();takeWalletOath();`);
+  assert(read("state.rng") === rng, "the sheet choice drew from the shared random stream");
+  assert(read("hotKeyBackedUp()") === false && read("!!hotKey().diceSheet") && read("!hotKey().passphrase") && read("!hotKey().backup"), "a kept sheet was treated as the written backup");
+  read("hotKeyLost('disk',state.time,true)");
+  assert(read("state.wallets.hot") === 1 && read("!!hotKey() && !hotKey().retired"), "the roll sheet did not rebuild the online wallet");
+
+  boot();
+  read(`createHotWallet({keyHex:"abcd",diceSheet:true,passphrase:true,passphrasePlace:"bank"});hotKey().diceSheet.place="trusted";state.wallets.hot=2;`);
+  read("applyPlaceIncident('trusted','burglary',state.time,true)");
+  assert(read("state.wallets.hot") === 2 && read("!!hotKey().seedKnown") && read("!hotKey().retired"), "a stolen sheet spent the coins without the passphrase");
+  read("applyPlaceIncident('bank','burglary',state.time,true)");
+  assert(read("state.wallets.hot") < 2 && read("state.custody.keys.some(k=>k.retired)"), "seed and passphrase together did not spend");
+
+  boot();
+  read(`createHotWallet({keyHex:"abcd",backup:true});state.wallets.hot=1;state._rngBefore=state.rng;hotKeyLost('disk',state.time,true);`);
+  assert(read("state.wallets.hot") === 1 && read("state.rng") === read("state._rngBefore"), "a plain backup no longer restores, or the restore drew a random number");
+
+  boot();
+  const before = read("state.rng");
+  read("advancePlaceRisks(state.time+30*86400000,true)");
+  assert(read("state.rng") === before, "place risks with nothing kept drew from the shared stream");
+});
+
 rule("the fourth halving lands on its UTC day, 20 April 2024, not the 19th", () => {
   // Block 840,000 was mined at 00:09 UTC on 20 April 2024. It is still the 19th in the Americas.
   assert(run('subsidyAt(at("2024-04-19"))') === 6.25, "the subsidy had already halved on 19 April 2024");
