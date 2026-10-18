@@ -101,6 +101,11 @@ document.getElementById("app").addEventListener("click",e=>{
   else if(a==="custody-move")moveCustodyItem(b.dataset.kind,id,v);
   else if(a==="custody-restore-key")restoreCustodyKey(id,v);
   else if(a==="custody-lesson"){custodyLesson=v;render()}
+  else if(a==="custody-shares-split")splitKeyIntoShares(id);
+  else if(a==="custody-shares-discard")destroyKeyShares(id);
+  else if(a==="custody-arrangement")setCollaborativeArrangement(id);
+  else if(a==="custody-arrangement-pay")payArrangementFee();
+  else if(a==="custody-drill")custodyDisasterDrill(id||"site",v||"fire");
   else if(a==="select-venue"){selectedVenue=v;render()}
   else if(a==="patch-firmware")patchFirmware();
   else if(a==="node-storage")upgradeNodeStorage(Number(v));

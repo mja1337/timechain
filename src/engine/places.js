@@ -49,11 +49,19 @@ function custodyDevicesOfKey(key,s=state){return (s.custody.devices||[]).filter(
 /* A key can sign if a working device holds it. A key with no device on record at all is taken as
    live, because nothing says it is gone. */
 function custodyKeyLive(key,s=state){
+  if(key&&key.company){
+    if(typeof companyCanSign==="function")return companyCanSign(s);
+    return !key.retired&&!(s.custody&&s.custody.companyOutageUntil&&s.time<s.custody.companyOutageUntil);
+  }
   const devices=custodyDevicesOfKey(key,s);
   return devices.length===0||devices.some(d=>!d.destroyed&&d.place!=="transit");
 }
-/* A key with no working signer can still be rebuilt if its backup is intact and not on a journey. */
-function custodyKeyRestorable(key){const b=key.backup;return !!b&&!b.destroyed&&b.place!=="transit"}
+/* A key with no working signer can still be rebuilt if its backup is intact and not on a journey.
+   Shamir-style shares count when at least the threshold survive off a journey. */
+function custodyKeyRestorable(key){
+  if(typeof keySharesRestorable==="function"&&keySharesRestorable(key))return true;
+  const b=key.backup;return !!b&&!b.destroyed&&b.place!=="transit";
+}
 /* Distinct seeds among the assigned keys that can still produce a signature: a working device, or
    a backup to rebuild one from. `lost` asks the same question after some things have gone: it is
    called with an item's id and the place it is kept, and returns true if that item is lost. */
@@ -64,7 +72,12 @@ function custodyUsableSeeds(s=state,lost=null){
     const live=devices.length===0||devices.some(d=>!d.destroyed&&d.place!=="transit"&&!gone("d"+d.uid,placeKey(d.place,"d"+d.uid,s)));
     const b=key.backup;
     const rebuild=!!b&&!b.destroyed&&b.place!=="transit"&&!gone("b"+key.id,placeKey(b.place,"b"+key.id,s));
-    if(live||rebuild)seeds.add(key.seed||key.id);
+    let shareRebuild=false;
+    if(typeof liveShares==="function"&&keyShares(key).length){
+      const left=liveShares(key).filter(sh=>!gone("sh"+shareRef(key.id,sh.index),placeKey(sh.place,"sh"+shareRef(key.id,sh.index),s))).length;
+      shareRebuild=left>=keyShareThreshold(key);
+    }
+    if(live||rebuild||shareRebuild)seeds.add(key.seed||key.id);
   }
   return seeds;
 }
@@ -150,23 +163,27 @@ function custodySignerDays(s=state){
 /* ---- what is kept where --------------------------------------------------------------- */
 
 function placeItems(place,s=state){
-  const c=s.custody,out={devices:[],backups:[],config:0,sheets:[],passes:[]};
+  const c=s.custody,out={devices:[],backups:[],config:0,sheets:[],passes:[],shares:[]};
   (c.devices||[]).forEach(d=>{if(!d.destroyed&&d.place&&custodyPlaceId(d.place,s)===place)out.devices.push(d)});
   (c.keys||[]).forEach(k=>{
     if(k.backup&&!k.backup.destroyed&&k.backup.place&&custodyPlaceId(k.backup.place,s)===place)out.backups.push(k);
     if(k.diceSheet&&!k.diceSheet.destroyed&&k.diceSheet.place&&custodyPlaceId(k.diceSheet.place,s)===place)out.sheets.push(k);
     if(k.passphraseBackup&&!k.passphraseBackup.destroyed&&k.passphraseBackup.place&&custodyPlaceId(k.passphraseBackup.place,s)===place)out.passes.push(k);
+    (Array.isArray(k.shares)?k.shares:[]).forEach(sh=>{
+      if(sh&&!sh.destroyed&&sh.place&&custodyPlaceId(sh.place,s)===place)out.shares.push({key:k,share:sh});
+    });
   });
   if(c.configBackedUp)custodyConfigLocations(c).forEach(p=>{if(p&&custodyPlaceId(p,s)===place)out.config++});
   return out;
 }
-function placeHolds(items){return items.devices.length+items.backups.length+(items.config||0)+(items.sheets?items.sheets.length:0)+(items.passes?items.passes.length:0)}
+function placeHolds(items){return items.devices.length+items.backups.length+(items.config||0)+(items.sheets?items.sheets.length:0)+(items.passes?items.passes.length:0)+(items.shares?items.shares.length:0)}
 function placeSentence(items){
   const parts=[];
   if(items.devices.length)parts.push(`${items.devices.length} signer${items.devices.length===1?"":"s"}`);
   if(items.backups.length)parts.push(`${items.backups.length} seed backup${items.backups.length===1?"":"s"}`);
   if(items.sheets&&items.sheets.length)parts.push(items.sheets.length===1?"a roll sheet":`${items.sheets.length} roll sheets`);
   if(items.passes&&items.passes.length)parts.push(items.passes.length===1?"a passphrase slip":`${items.passes.length} passphrase slips`);
+  if(items.shares&&items.shares.length)parts.push(items.shares.length===1?"a Shamir share":`${items.shares.length} Shamir shares`);
   if(items.config)parts.push(items.config===1?"a copy of the wallet configuration":`${items.config} copies of the wallet configuration`);
   return parts.join(", ")||"nothing";
 }
@@ -260,7 +277,7 @@ function applyTrustedBetrayal(placeId,next,silent=false){
 function applyPlaceIncidentBase(placeId,kind,next,silent=false){
   const c=state.custody,place=custodyPlace(placeId),policy=custodyPolicy(c.policy),items=placeItems(placeId);
   const before=custodyOperable(),assigned=new Map(custodyAssignedKeys().map(k=>[k.id,k.seed||k.id]));
-  const lost={devices:[],backups:[],config:0,sheets:[],passes:[]},stolen=new Set(),kept=[];
+  const lost={devices:[],backups:[],config:0,sheets:[],passes:[],shares:[]},stolen=new Set(),kept=[];
   // A seizure takes what a burglary takes, steel included: nobody asks whether the plate was fireproof.
   const takes=kind==="burglary"||kind==="seizure",taker=kind==="seizure"?"The authorities":"Burglars";
   items.devices.forEach(d=>{d.destroyed={at:next,cause:kind};lost.devices.push(d)});
@@ -272,6 +289,18 @@ function applyPlaceIncidentBase(placeId,kind,next,silent=false){
   });
   (items.sheets||[]).forEach(k=>loseCeremonyPaper(k,"diceSheet",kind,takes,next,lost.sheets));
   (items.passes||[]).forEach(k=>loseCeremonyPaper(k,"passphraseBackup",kind,takes,next,lost.passes));
+  const shareHits={};
+  (items.shares||[]).forEach(row=>{
+    const sh=row.share;if(!sh||sh.destroyed)return;
+    sh.destroyed=true;sh.cause=kind;lost.shares.push(row);
+    shareHits[row.key.id]=(shareHits[row.key.id]||0)+1;
+  });
+  if(takes){
+    for(const [kid,hit] of Object.entries(shareHits)){
+      const key=custodyKey(kid);if(!key)continue;
+      if(hit>=keyShareThreshold(key)){key.exposed={cause:kind,at:next,via:"shares"};if(assigned.has(key.id))stolen.add(assigned.get(key.id))}
+    }
+  }
   // The descriptor is paper in every place there is.
   if(items.config){
     const here=p=>p&&custodyPlaceId(p)===placeId,locations=custodyConfigLocations(c),left=locations.filter(p=>!here(p));
@@ -279,7 +308,7 @@ function applyPlaceIncidentBase(placeId,kind,next,silent=false){
     if(left.length===0){c.configBackedUp=false;delete c.configPlace;c.configCopies=[]}
     else{c.configPlace=left[0];c.configCopies=left.slice(1)}
   }
-  const [what]=PLACE_KIND_WORDS[kind],gone=placeSentence({devices:lost.devices,backups:lost.backups,config:lost.config,sheets:lost.sheets,passes:lost.passes});
+  const [what]=PLACE_KIND_WORDS[kind],gone=placeSentence({devices:lost.devices,backups:lost.backups,config:lost.config,sheets:lost.sheets,passes:lost.passes,shares:lost.shares});
   const title=`${what} at ${placeSay(place)}`;
   log(title,gone==="nothing"?"Nothing was lost":`Lost: ${gone}`,"custody");
   const held=(state.wallets.hot||0)+(state.wallets.cold||0);
@@ -293,7 +322,7 @@ function applyPlaceIncidentBase(placeId,kind,next,silent=false){
       remedy:policy.threshold>1?"Keep the keys of a quorum in different places: one stolen seed then spends nothing.":"A single seed in a single place is a single point of failure. Keep a second copy apart, and move the signer and the backup to different places.",tab:"custody"});
     return;
   }
-  const paperLost=(lost.sheets?lost.sheets.length:0)+(lost.passes?lost.passes.length:0);
+  const paperLost=(lost.sheets?lost.sheets.length:0)+(lost.passes?lost.passes.length:0)+(lost.shares?lost.shares.length:0);
   const tellMeAnyway=lost.devices.length||lost.backups.length||lost.config||paperLost;
   const after=custodyOperable();
   if(before&&!after){
@@ -319,6 +348,12 @@ function custodyItemRef(kind,id){
   if(kind==="backup"){const k=custodyKey(id);return k&&k.backup&&!k.backup.destroyed?{get:()=>k.backup.place,set:v=>{k.backup.place=v},name:`${k.label} seed backup`}:null}
   if(kind==="dicesheet"){const k=custodyKey(id);return k&&k.diceSheet&&!k.diceSheet.destroyed?{get:()=>k.diceSheet.place,set:v=>{k.diceSheet.place=v},name:`${k.label} roll sheet`}:null}
   if(kind==="passphrase"){const k=custodyKey(id);return k&&k.passphraseBackup&&!k.passphraseBackup.destroyed?{get:()=>k.passphraseBackup.place,set:v=>{k.passphraseBackup.place=v},name:`${k.label} passphrase slip`}:null}
+  if(kind==="share"){
+    const sh=typeof keyShareByRef==="function"?keyShareByRef(id):null;
+    if(!sh||sh.destroyed)return null;
+    const k=custodyKey(String(id).split(":")[0]);
+    return {get:()=>sh.place,set:v=>{sh.place=v},name:`${k?k.label:"Key"} share ${sh.index}/${sh.total}`};
+  }
   if(kind==="configcopy")return c.configBackedUp?{get:()=>c.configPlace,set:()=>{},name:"A copy of the wallet configuration",copy:true}:null;
   return null;
 }
